@@ -45,7 +45,8 @@ demogprc/
     ├── hero.png     — Hero banner
     ├── logo.png     — Logo GPRC
     ├── bg.jpg       — Background image
-    └── success.png  — Success image
+    ├── mascot-left.jpg
+    └── mascot-right.jpg
 ```
 
 ## 🚀 Local Development
@@ -65,4 +66,4 @@ npx serve
 
 ## 📄 License
 
-© 2026 NidSs
+© 2026 Grandprix Runbike Championship

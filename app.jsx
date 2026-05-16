@@ -776,9 +776,11 @@ function StepRacers({ racers, setRacers, next, prev }) {
         {err && <Alert>{err}</Alert>}
 
         <div className="flex gap-2 pt-2">
-          <Button variant="secondary" onClick={prev} className="flex-1">
-            <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
-          </Button>
+          {prev && (
+            <Button variant="secondary" onClick={prev} className="flex-1">
+              <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+            </Button>
+          )}
           <Button onClick={submit} className="flex-1">
             ดำเนินการต่อ <ArrowRight className="w-4 h-4" />
           </Button>
@@ -1587,7 +1589,7 @@ const MethodCard = ({ id, active, onClick, title, sub }) => (
 // ============================================================
 // SUCCESS
 // ============================================================
-function StepSuccess({ racers, data, reset }) {
+function StepSuccess({ racers, data, reset, onBackToHome }) {
   const refId = useMemo(() => 'REG-' + Date.now().toString().slice(-8), []);
   const totalItems = racers.reduce((s, r) => s + Object.values(r.selectedRaces || {}).reduce((a, b) => a + b.length, 0), 0);
 
@@ -1636,22 +1638,705 @@ function StepSuccess({ racers, data, reset }) {
           <p className="text-[11px] text-slate-500 mt-2">📌 แสดง QR นี้ต่อเจ้าหน้าที่ในวันแข่งขัน</p>
         </div>
 
-        <Button onClick={reset} variant="secondary" className="w-full">
-          ลงทะเบียนนักแข่งเพิ่มเติม
-        </Button>
+        <div className="space-y-2">
+          {onBackToHome && (
+            <Button onClick={onBackToHome} className="w-full">
+              ดูประวัติการลงทะเบียน <ArrowRight className="w-4 h-4" />
+            </Button>
+          )}
+          <Button onClick={reset} variant="secondary" className="w-full">
+            {onBackToHome ? 'ลงทะเบียนเพิ่มเติม' : 'ลงทะเบียนนักแข่งเพิ่มเติม'}
+          </Button>
+        </div>
       </div>
     </Card>
   );
 }
 
 // ============================================================
-// MAIN APP
+// NAVBAR
 // ============================================================
-function RaceRegistration() {
-  const [step, setStep] = useState(1);
+function Navbar({ currentView, onNavigate, user, onLogin, onLogout }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navItems = [
+    { id: 'landing', label: 'หน้าหลัก' },
+    { id: 'events', label: 'ปฏิทินกิจกรรม' },
+    { id: 'news', label: 'ประชาสัมพันธ์' },
+    { id: 'faq', label: 'คำถามที่พบบ่อย' },
+    { id: 'contact', label: 'ติดต่อเรา' },
+  ];
+
+  return (
+    <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <button onClick={() => onNavigate('landing')} className="flex items-center gap-2 hover:opacity-80 transition">
+          <img src={LOGO_DATA_URL} alt="GPRC" className="h-8 w-auto" />
+          <span className="hidden sm:block text-sm font-bold tracking-tight text-slate-900">
+            GRANDPRIX RUNBIKE 2026
+          </span>
+        </button>
+
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center gap-1">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => item.id === 'landing' && onNavigate('landing')}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition ${
+                currentView === item.id ? 'text-red-600' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Auth area */}
+        <div className="flex items-center gap-2">
+          {user ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigate('history')}
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition ${
+                  currentView === 'history' ? 'bg-red-50 text-red-600' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <FileIcon className="w-4 h-4" strokeWidth={1.75} />
+                ประวัติของฉัน
+              </button>
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-bold flex items-center justify-center">
+                  {(user.username || 'U')[0].toUpperCase()}
+                </div>
+                <span className="hidden sm:inline text-sm font-medium text-slate-700 max-w-[100px] truncate">
+                  {user.username}
+                </span>
+                <button onClick={onLogout} title="ออกจากระบบ" className="text-slate-400 hover:text-red-600 transition p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => onLogin('login')}
+                className="hidden sm:inline-flex h-9 px-3 text-sm font-medium text-slate-700 hover:text-red-600 transition"
+              >
+                เข้าสู่ระบบ
+              </button>
+              <button
+                onClick={() => onLogin('register')}
+                className="inline-flex items-center justify-center h-9 px-4 text-sm font-semibold rounded-md bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-md shadow-red-600/20 transition"
+              >
+                สมัครสมาชิก
+              </button>
+            </>
+          )}
+
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden p-2 text-slate-600 hover:text-slate-900"
+            aria-label="เมนู"
+          >
+            <ChevronDown className={`w-5 h-5 transition-transform ${mobileOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile nav */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-slate-200 px-4 py-3 space-y-1 bg-white">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { item.id === 'landing' && onNavigate('landing'); setMobileOpen(false); }}
+              className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 rounded-md hover:bg-slate-50"
+            >
+              {item.label}
+            </button>
+          ))}
+          {user && (
+            <button
+              onClick={() => { onNavigate('history'); setMobileOpen(false); }}
+              className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 rounded-md hover:bg-slate-50"
+            >
+              ประวัติของฉัน
+            </button>
+          )}
+        </div>
+      )}
+    </nav>
+  );
+}
+
+// ============================================================
+// LANDING PAGE
+// ============================================================
+function LandingPage({ onRegisterClick, user }) {
+  // mock events
+  const events = [
+    {
+      id: 'evt1',
+      title: 'RUN BIKE',
+      dateRange: '26 มีนาคม 2569 - 26 มี.ค.',
+      status: 'รอการประกาศ',
+      registered: 9,
+      capacity: 200,
+      color: 'from-orange-500 to-red-600',
+    },
+    {
+      id: 'evt2',
+      title: 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026',
+      dateRange: '26 มีนาคม 2569 - 27 มี.ค.',
+      status: 'รอติดตาม',
+      registered: 3,
+      capacity: 100,
+      color: 'from-red-500 to-red-700',
+      isMain: true,
+    },
+  ];
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)]">
+      {/* Hero section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-red-50/30 to-white">
+        <div className="absolute inset-0 opacity-30 pointer-events-none" style={{
+          backgroundImage: 'radial-gradient(circle at 20% 50%, #fecaca 0%, transparent 50%), radial-gradient(circle at 80% 20%, #fee2e2 0%, transparent 50%)'
+        }} aria-hidden="true" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+          <div className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold uppercase tracking-widest rounded-full mb-4">
+              <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+              Season 2026 — เปิดรับสมัครแล้ว
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-black text-slate-900 leading-[1.05] tracking-tight mb-4">
+              ค้นพบ
+              <span className="block bg-gradient-to-r from-red-500 via-red-600 to-red-700 bg-clip-text text-transparent">
+                แชมเปี้ยนตัวจริง
+              </span>
+              ในตัวลูกคุณ
+            </h1>
+            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto mb-8">
+              สนามแข่ง Runbike มาตรฐานสำหรับเด็กอายุ 3-15 ปี — ปลอดภัย สนุก สร้างประสบการณ์ที่น่าจดจำให้ลูกของคุณ
+            </p>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <Button onClick={() => onRegisterClick()} size="lg" className="text-base px-6">
+                สมัครเลย <ArrowRight className="w-5 h-5" />
+              </Button>
+              {!user && (
+                <button
+                  onClick={() => onRegisterClick('login')}
+                  className="inline-flex items-center gap-1.5 px-5 h-12 text-sm font-semibold text-slate-700 hover:text-red-600 transition"
+                >
+                  มีบัญชีอยู่แล้ว? เข้าสู่ระบบ <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Events section */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="flex items-end justify-between mb-6 flex-wrap gap-2">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">การแข่งขันที่กำลังเปิดรับสมัคร</h2>
+            <p className="text-sm text-slate-500 mt-1">เลือกสนามที่ใช่สำหรับลูกของคุณ</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+            {events.length} กิจกรรม
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {events.map(evt => {
+            const pct = Math.round((evt.registered / evt.capacity) * 100);
+            return (
+              <div
+                key={evt.id}
+                className={`group relative rounded-2xl overflow-hidden border-2 transition-all hover:-translate-y-1 hover:shadow-2xl ${
+                  evt.isMain ? 'border-red-200 shadow-xl shadow-red-900/10' : 'border-slate-200 shadow-md'
+                }`}
+              >
+                {/* Cover image area */}
+                <div className={`relative h-44 bg-gradient-to-br ${evt.color} overflow-hidden`}>
+                  {evt.isMain && (
+                    <img src={HERO_BANNER} alt="" className="absolute inset-0 w-full h-full object-cover opacity-90" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-md text-[10px] font-bold uppercase tracking-wider text-red-600">
+                      <Flag className="w-3 h-3" strokeWidth={2.5} />
+                      {evt.status}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <h3 className="text-white text-xl font-black tracking-tight leading-tight drop-shadow-lg">{evt.title}</h3>
+                  </div>
+                </div>
+
+                {/* Info area */}
+                <div className="p-5 bg-white">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
+                    <Calendar className="w-4 h-4" strokeWidth={1.75} />
+                    <span>{evt.dateRange}</span>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-500">ผู้สมัคร</span>
+                      <span className="font-semibold text-slate-900">{evt.registered}/{evt.capacity} คน</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+
+                  <Button onClick={() => onRegisterClick()} className="w-full">
+                    สมัครเลย <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Features section */}
+      <section className="bg-slate-50 border-y border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              { icon: Trophy, title: 'ชิงถ้วยรางวัล', desc: 'และเหรียญเกียรติยศ' },
+              { icon: ShieldCheck, title: 'มาตรฐานความปลอดภัย', desc: 'สนุก ปลอดภัย ได้มาตรฐาน' },
+              { icon: User, title: 'กิจกรรมสำหรับทุกวัย', desc: 'สร้างประสบการณ์ที่น่าจดจำ' },
+            ].map((f, i) => (
+              <div key={i} className="text-center sm:text-left flex sm:items-start gap-3 flex-col sm:flex-row items-center">
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/30">
+                  <f.icon className="w-6 h-6 text-white" strokeWidth={2} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 mb-0.5">{f.title}</h3>
+                  <p className="text-sm text-slate-500">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <img src={LOGO_DATA_URL} alt="GPRC" className="h-8 w-auto" />
+            <span className="text-sm font-semibold text-slate-900">GRANDPRIX RUNBIKE 2026</span>
+          </div>
+          <div className="text-xs text-slate-500 text-center sm:text-right">
+            <p>© 2026 Grandprix Runbike Championship · Secured by BEAM</p>
+            <p className="mt-1">📱 IG: gp_runbike · TikTok: GPrunbike · FB: Grandprix Runbike Championship</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// ============================================================
+// LOGIN MODAL
+// ============================================================
+function LoginModal({ open, onClose, onLogin, defaultMode = 'login' }) {
+  const [mode, setMode] = useState(defaultMode);
+  const [form, setForm] = useState({ identifier: '', password: '', email: '', username: '', phone: '', confirmPassword: '' });
+  const [err, setErr] = useState('');
+
+  useEffect(() => { setMode(defaultMode); setErr(''); }, [defaultMode, open]);
+
+  const submitLogin = () => {
+    if (!form.identifier || !form.password) return setErr('กรุณากรอกอีเมล/ชื่อผู้ใช้ และรหัสผ่าน');
+    setErr('');
+    // demo: เข้าได้ทุกอันที่กรอก
+    onLogin({
+      username: form.identifier.includes('@') ? form.identifier.split('@')[0] : form.identifier,
+      email: form.identifier.includes('@') ? form.identifier : `${form.identifier}@example.com`,
+      phone: '',
+    });
+    onClose();
+  };
+
+  const submitRegister = () => {
+    if (!form.username || !form.email || !form.password) return setErr('กรุณากรอกข้อมูลให้ครบ');
+    if (form.password !== form.confirmPassword) return setErr('รหัสผ่านไม่ตรงกัน');
+    if (!/\S+@\S+\.\S+/.test(form.email)) return setErr('รูปแบบอีเมลไม่ถูกต้อง');
+    setErr('');
+    onLogin({ username: form.username, email: form.email, phone: form.phone });
+    onClose();
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
+    >
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
+        <button
+          type="button"
+          onClick={() => { setMode('login'); setErr(''); }}
+          className={`flex-1 h-9 text-sm font-semibold rounded-md transition-all ${
+            mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          เข้าสู่ระบบ
+        </button>
+        <button
+          type="button"
+          onClick={() => { setMode('register'); setErr(''); }}
+          className={`flex-1 h-9 text-sm font-semibold rounded-md transition-all ${
+            mode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          สมัครสมาชิก
+        </button>
+      </div>
+
+      {mode === 'login' ? (
+        <div className="space-y-3">
+          <div>
+            <Label required>อีเมลหรือชื่อผู้ใช้</Label>
+            <Input
+              icon={User}
+              placeholder="email@example.com หรือ username"
+              value={form.identifier}
+              onChange={e => setForm({ ...form, identifier: e.target.value })}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-slate-600">
+                รหัสผ่าน <span className="text-red-500 ml-0.5">*</span>
+              </label>
+              <button type="button" className="text-[11px] text-red-600 hover:underline font-medium">ลืมรหัสผ่าน?</button>
+            </div>
+            <Input icon={Lock} type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+          </div>
+          {err && <Alert>{err}</Alert>}
+          <Button onClick={submitLogin} className="w-full">
+            เข้าสู่ระบบ <ArrowRight className="w-4 h-4" />
+          </Button>
+          <p className="text-[11px] text-slate-400 text-center">💡 Demo: ใส่อะไรก็เข้าได้</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <Label required>ชื่อผู้ใช้</Label>
+            <Input icon={User} placeholder="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
+          </div>
+          <div>
+            <Label required>อีเมล</Label>
+            <Input icon={Mail} type="email" placeholder="you@example.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div>
+            <Label>เบอร์โทรศัพท์</Label>
+            <Input icon={Phone} placeholder="08X-XXX-XXXX" maxLength={10} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label required>รหัสผ่าน</Label>
+              <Input icon={Lock} type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+            </div>
+            <div>
+              <Label required>ยืนยันรหัสผ่าน</Label>
+              <Input icon={Lock} type="password" placeholder="••••••••" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} />
+            </div>
+          </div>
+          {err && <Alert>{err}</Alert>}
+          <Button onClick={submitRegister} className="w-full">
+            สมัครสมาชิก <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ============================================================
+// HISTORY PAGE
+// ============================================================
+function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSelectRegistration }) {
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">ประวัติการลงทะเบียน</h1>
+          <p className="text-sm text-slate-500 mt-1">สวัสดี <span className="font-medium text-slate-700">{user?.username}</span> · นี่คือรายการนักแข่งที่คุณลงทะเบียนไว้</p>
+        </div>
+        <Button onClick={onRegisterClick}>
+          <Plus className="w-4 h-4" /> ลงทะเบียนเพิ่ม
+        </Button>
+      </div>
+
+      {registrations.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center bg-white">
+          <div className="inline-flex w-16 h-16 rounded-full bg-slate-100 items-center justify-center mb-3">
+            <Flag className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 mb-1">ยังไม่มีการลงทะเบียน</h3>
+          <p className="text-sm text-slate-500 mb-4">เริ่มลงทะเบียนนักแข่งคนแรกของคุณวันนี้</p>
+          <Button onClick={onRegisterClick}>
+            ลงทะเบียนเลย <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {registrations.map((reg, idx) => (
+            <div key={reg.id} className="rounded-2xl border-2 border-slate-200 bg-white overflow-hidden hover:border-red-200 hover:shadow-lg transition-all">
+              <div className="px-5 py-3 bg-gradient-to-r from-slate-900 to-red-950 text-white flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] font-bold text-red-300 uppercase tracking-widest">การลงทะเบียน #{idx + 1}</span>
+                  <span className="text-slate-400">·</span>
+                  <span className="font-mono text-xs font-semibold">{reg.refId}</span>
+                </div>
+                <span className="text-[11px] text-slate-300">{reg.date}</span>
+              </div>
+
+              <div className="p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">นักแข่ง</p>
+                    <p className="text-lg font-bold text-slate-900">{reg.racers.length} คน</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">รายการ</p>
+                    <p className="text-lg font-bold text-slate-900">{reg.totalItems} รายการ</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">ยอดที่ชำระ</p>
+                    <p className="text-lg font-black text-red-600">{fmt(reg.total)} ฿</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-3 mb-3">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">รายชื่อนักแข่ง (คลิกเพื่อดู QR Code)</p>
+                  <div className="space-y-1.5">
+                    {reg.racers.map((racer, ri) => (
+                      <button
+                        key={ri}
+                        onClick={() => onSelectRegistration(reg, racer)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-red-300 hover:bg-red-50/30 transition group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm flex-shrink-0">
+                            #{ri + 1}
+                          </span>
+                          <div className="text-left min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">
+                              {racer.thFirstName} {racer.thLastName}
+                            </p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {racer.selectedDates.length} วัน · {Object.values(racer.selectedRaces || {}).reduce((a, b) => a + b.length, 0)} รุ่น
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-red-600 font-semibold opacity-0 group-hover:opacity-100 transition flex items-center gap-1 flex-shrink-0">
+                          ดู QR <ArrowRight className="w-3 h-3" />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// QR CODE MODAL
+// ============================================================
+function QRModal({ open, onClose, registration, racer }) {
+  if (!racer) return null;
+  const racerItems = [];
+  for (const did of racer.selectedDates) {
+    const dateObj = RACE_DATES.find(d => d.id === did);
+    for (const tid of (racer.selectedRaces[did] || [])) {
+      const t = RACE_TIERS.find(x => x.id === tid);
+      if (dateObj && t) racerItems.push({ date: dateObj.short, tier: t.label });
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="QR Code ลงทะเบียน">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-700 mb-3 shadow-lg shadow-red-500/30">
+          <Flag className="w-6 h-6 text-white" strokeWidth={2} />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900 mb-0.5">{racer.thFirstName} {racer.thLastName}</h3>
+        <p className="text-xs text-slate-500 mb-1">{racer.enFirstName} {racer.enLastName}</p>
+        <p className="font-mono text-xs font-semibold text-red-600 mb-4">{registration.refId}</p>
+
+        <div className="w-44 h-44 mx-auto bg-white border-2 border-slate-200 rounded-xl p-2 shadow-md mb-3">
+          <QRPattern />
+        </div>
+        <p className="text-[11px] text-slate-500 mb-4">📌 แสดง QR นี้ต่อเจ้าหน้าที่ในวันแข่งขัน</p>
+
+        {racerItems.length > 0 && (
+          <div className="rounded-lg border border-slate-200 text-left p-3 mb-3 bg-slate-50/50">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">รายการแข่ง</p>
+            <div className="space-y-1">
+              {racerItems.map((item, i) => (
+                <div key={i} className="flex items-center justify-between text-xs">
+                  <span className="text-slate-700">{item.date}</span>
+                  <span className="font-semibold text-slate-900">รุ่น {item.tier}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Button onClick={onClose} variant="secondary" className="w-full">ปิด</Button>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================
+// APP — view routing + auth state
+// ============================================================
+function App() {
+  // view: 'landing' | 'register' | 'history'
+  const [view, setView] = useState('landing');
+  const [user, setUser] = useState(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginMode, setLoginMode] = useState('login');
+  const [registrations, setRegistrations] = useState([]);
+  const [qrModal, setQrModal] = useState({ open: false, registration: null, racer: null });
+
+  const openLogin = (mode = 'login') => {
+    setLoginMode(mode);
+    setLoginOpen(true);
+  };
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    // ถ้าอยู่ในหน้า landing แล้ว login จะไปหน้า history
+    setView('history');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setView('landing');
+  };
+
+  const handleRegisterClick = (mode = null) => {
+    if (mode === 'login') { openLogin('login'); return; }
+    // กด "สมัครเลย" — ถ้า login แล้วไปหน้า register flow (เริ่มที่ step 2 ใส่ชื่อนักแข่งเลย)
+    setView('register');
+  };
+
+  const handleRegistrationComplete = ({ racers, data }) => {
+    const newReg = {
+      id: Date.now(),
+      refId: 'REG-' + Date.now().toString().slice(-8),
+      date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+      racers: racers,
+      totalItems: racers.reduce((s, r) => s + Object.values(r.selectedRaces || {}).reduce((a, b) => a + b.length, 0), 0),
+      total: data.finalTotal,
+    };
+    setRegistrations([newReg, ...registrations]);
+    setView('history');
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+      <Navbar
+        currentView={view}
+        onNavigate={setView}
+        user={user}
+        onLogin={openLogin}
+        onLogout={handleLogout}
+      />
+
+      <main>
+        {view === 'landing' && (
+          <LandingPage user={user} onRegisterClick={handleRegisterClick} />
+        )}
+
+        {view === 'register' && (
+          <div className="relative min-h-[calc(100vh-4rem)]" style={{ backgroundColor: '#fef2f2' }}>
+            <div
+              className="absolute inset-0 pointer-events-none opacity-50"
+              style={{
+                backgroundImage: `url(${BG_DATA_URL})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'top center',
+                backgroundRepeat: 'no-repeat',
+              }}
+              aria-hidden="true"
+            />
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.9) 30%, rgba(255,255,255,1) 60%)',
+              }}
+              aria-hidden="true"
+            />
+            <div className="relative max-w-2xl mx-auto px-4 py-6 sm:py-8">
+              <RaceRegistration
+                onBackToHome={() => setView(user ? 'history' : 'landing')}
+                onComplete={handleRegistrationComplete}
+                startStep={user ? 2 : 1}
+                prefillUser={user}
+              />
+            </div>
+          </div>
+        )}
+
+        {view === 'history' && user && (
+          <HistoryPage
+            user={user}
+            registrations={registrations}
+            onRegisterClick={() => setView('register')}
+            onBackToHome={() => setView('landing')}
+            onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
+          />
+        )}
+      </main>
+
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onLogin={handleLogin}
+        defaultMode={loginMode}
+      />
+
+      <QRModal
+        open={qrModal.open}
+        onClose={() => setQrModal({ open: false, registration: null, racer: null })}
+        registration={qrModal.registration}
+        racer={qrModal.racer}
+      />
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN APP (multi-step registration flow)
+// ============================================================
+function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser }) {
+  const [step, setStep] = useState(startStep);
   const [data, setData] = useState({
-    username: '', email: '', password: '', confirmPassword: '', phone: '',
-    pdpa: false, rules: false,
+    username: prefillUser?.username || '',
+    email: prefillUser?.email || '',
+    password: '', confirmPassword: '',
+    phone: prefillUser?.phone || '',
+    pdpa: !!prefillUser, rules: !!prefillUser,
     guardian: { name: '', address: '', email: '', phone: '' },
     couponCode: '', appliedCoupon: null,
     finalTotal: 0, subtotal: 0, discount: 0,
@@ -1659,92 +2344,51 @@ function RaceRegistration() {
   const [racers, setRacers] = useState([newRacer()]);
 
   const next = () => setStep(s => Math.min(s + 1, 6));
-  const prev = () => setStep(s => Math.max(s - 1, 1));
+  const prev = () => setStep(s => Math.max(s - 1, startStep));
   const reset = () => {
+    // เรียก onComplete เพื่อกลับไป history หรือ home
+    if (onComplete) {
+      onComplete({ racers, data });
+      return;
+    }
     setStep(1);
-    setData({
-      username: '', email: '', password: '', confirmPassword: '', phone: '',
-      pdpa: false, rules: false,
-      guardian: { name: '', address: '', email: '', phone: '' },
-      couponCode: '', appliedCoupon: null,
-      finalTotal: 0, subtotal: 0, discount: 0,
-    });
-    setRacers([newRacer()]);
   };
 
   return (
-    <div
-      className="min-h-screen font-sans antialiased text-slate-900 relative"
-      style={{
-        backgroundColor: '#fef2f2',
-        backgroundImage: `url(${BG_DATA_URL})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'top center',
-        backgroundAttachment: 'fixed',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
-      {/* fade overlay เพื่อให้เนื้อหาอ่านง่าย */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.85) 25%, rgba(255,255,255,0.98) 50%, rgba(255,255,255,1) 100%)',
-        }}
-        aria-hidden="true"
-      />
+    <div className="relative">
+      {/* Back to home button */}
+      {onBackToHome && step <= 5 && (
+        <button
+          onClick={onBackToHome}
+          className="mb-4 inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-red-600 font-medium transition"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> กลับหน้าหลัก
+        </button>
+      )}
 
-      <div className="relative max-w-2xl mx-auto px-4 pt-6 pb-10 sm:pt-8">
-        {/* Top header bar — logo + sub */}
-        <div className="flex items-center justify-between mb-4 sm:mb-5">
-          <div className="flex items-center gap-2.5 min-w-0 bg-white/80 backdrop-blur-sm rounded-full pl-1.5 pr-3 py-1.5 border border-red-100 shadow-sm">
-            <img src={LOGO_DATA_URL} alt="GPRC" className="h-7 w-auto flex-shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-bold tracking-tight text-slate-900 leading-none">
-              GRANDPRIX<br />RUNBIKE 2026
-            </span>
-          </div>
-          {step <= 5 && (
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-red-600 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-red-100 shadow-sm">
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-              SEASON 2026
-            </div>
-          )}
+      {/* Hero banner */}
+      {step === startStep && step === 1 && (
+        <div className="mb-4 sm:mb-5 -mx-2 sm:mx-0 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl shadow-red-900/10">
+          <img
+            src={HERO_BANNER}
+            alt="GRANDPRIX RUNBIKE CHAMPIONSHIP — เปิดรับสมัครแล้ว"
+            className="w-full h-auto block"
+          />
         </div>
+      )}
 
-        {/* Hero banner — ภาพรวมทั้งหมดในรูปเดียว */}
-        {step === 1 && (
-          <div className="mb-4 sm:mb-5 -mx-2 sm:mx-0 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl shadow-red-900/10">
-            <img
-              src={HERO_BANNER}
-              alt="GRANDPRIX RUNBIKE CHAMPIONSHIP — เปิดรับสมัครแล้ว"
-              className="w-full h-auto block"
-            />
-          </div>
-        )}
+      {step <= 5 && <ProgressBar current={step} />}
 
-        {step <= 5 && <ProgressBar current={step} />}
-
-        {step === 1 && <StepAccount data={data} setData={setData} next={next} />}
-        {step === 2 && <StepRacers racers={racers} setRacers={setRacers} next={next} prev={prev} />}
-        {step === 3 && <StepGuardian data={data} setData={setData} next={next} prev={prev} />}
-        {step === 4 && <StepSummary racers={racers} data={data} setData={setData} next={next} prev={prev} />}
-        {step === 5 && <StepPayment data={data} next={next} prev={prev} />}
-        {step === 6 && <StepSuccess racers={racers} data={data} reset={reset} />}
-
-        <div className="mt-6 text-center space-y-1">
-          <p className="text-[10px] text-slate-500 flex items-center justify-center gap-2 flex-wrap">
-            <span className="font-semibold">Grandprix Runbike Championship</span>
-            <span className="text-slate-300">·</span>
-            <span>Secured by BEAM</span>
-          </p>
-          <p className="text-[10px] text-slate-400">
-            📱 IG: gp_runbike · TikTok: GPrunbike · FB: Grandprix Runbike Championship
-          </p>
-        </div>
-      </div>
+      {step === 1 && <StepAccount data={data} setData={setData} next={next} />}
+      {step === 2 && <StepRacers racers={racers} setRacers={setRacers} next={next} prev={step > startStep ? prev : null} />}
+      {step === 3 && <StepGuardian data={data} setData={setData} next={next} prev={prev} />}
+      {step === 4 && <StepSummary racers={racers} data={data} setData={setData} next={next} prev={prev} />}
+      {step === 5 && <StepPayment data={data} next={next} prev={prev} />}
+      {step === 6 && <StepSuccess racers={racers} data={data} reset={reset} onBackToHome={onBackToHome} />}
     </div>
   );
 }
 
 
 const root = createRoot(document.getElementById('root'));
-root.render(<RaceRegistration />);
+root.render(<App />);

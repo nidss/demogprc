@@ -45,8 +45,7 @@ demogprc/
     ├── hero.png     — Hero banner
     ├── logo.png     — Logo GPRC
     ├── bg.jpg       — Background image
-    ├── mascot-left.jpg
-    └── mascot-right.jpg
+    └── success.png  — Success image
 ```
 
 ## 🚀 Local Development

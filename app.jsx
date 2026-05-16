@@ -2140,32 +2140,92 @@ function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSel
                 </div>
 
                 <div className="border-t border-slate-100 pt-3 mb-3">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">รายชื่อนักแข่ง (คลิกเพื่อดู QR Code)</p>
-                  <div className="space-y-1.5">
-                    {reg.racers.map((racer, ri) => (
-                      <button
-                        key={ri}
-                        onClick={() => onSelectRegistration(reg, racer)}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-red-300 hover:bg-red-50/30 transition group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm flex-shrink-0">
-                            #{ri + 1}
-                          </span>
-                          <div className="text-left min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">
-                              {racer.thFirstName} {racer.thLastName}
-                            </p>
-                            <p className="text-[11px] text-slate-500 truncate">
-                              {racer.selectedDates.length} วัน · {Object.values(racer.selectedRaces || {}).reduce((a, b) => a + b.length, 0)} รุ่น
-                            </p>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">รายชื่อนักแข่ง · คลิกเพื่อดูบัตรนักแข่ง + QR</p>
+                  <div className="space-y-2">
+                    {reg.racers.map((racer, ri) => {
+                      const tierLabels = [];
+                      const dateLabels = new Set();
+                      for (const did of racer.selectedDates || []) {
+                        const dateObj = RACE_DATES.find(d => d.id === did);
+                        if (dateObj) dateLabels.add(dateObj.short);
+                        for (const tid of (racer.selectedRaces?.[did] || [])) {
+                          const t = RACE_TIERS.find(x => x.id === tid);
+                          if (t) tierLabels.push(t.label);
+                        }
+                      }
+                      const uniqTiers = [...new Set(tierLabels)];
+
+                      // คำนวณอายุ
+                      let age = null;
+                      if (racer.birthDate) {
+                        const birth = new Date(racer.birthDate);
+                        const now = new Date();
+                        age = now.getFullYear() - birth.getFullYear();
+                        const m = now.getMonth() - birth.getMonth();
+                        if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+                      }
+
+                      return (
+                        <button
+                          key={ri}
+                          onClick={() => onSelectRegistration(reg, racer)}
+                          className="w-full text-left px-3.5 py-3 rounded-xl border border-slate-200 bg-white hover:border-red-300 hover:shadow-md transition group"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm shadow-red-500/30 flex-shrink-0">
+                              #{ri + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-slate-900 truncate">
+                                    {racer.thFirstName} {racer.thLastName}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 truncate">
+                                    {racer.enFirstName} {racer.enLastName}
+                                  </p>
+                                </div>
+                                <span className="text-[10px] text-red-600 font-bold opacity-0 group-hover:opacity-100 transition flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+                                  ดู QR <ArrowRight className="w-3 h-3" />
+                                </span>
+                              </div>
+
+                              {/* meta line: เพศ · อายุ · จำนวน */}
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-2">
+                                <span className="inline-flex items-center gap-0.5">
+                                  {racer.gender === 'M' ? '👦 ชาย' : racer.gender === 'F' ? '👧 หญิง' : '—'}
+                                </span>
+                                {age !== null && (
+                                  <>
+                                    <span className="text-slate-300">·</span>
+                                    <span>{age} ปี</span>
+                                  </>
+                                )}
+                                <span className="text-slate-300">·</span>
+                                <span>{[...dateLabels].length} วัน</span>
+                                <span className="text-slate-300">·</span>
+                                <span>{uniqTiers.length} รุ่น</span>
+                              </div>
+
+                              {/* tier + date tags */}
+                              <div className="flex flex-wrap gap-1.5">
+                                {uniqTiers.map((label, ti) => (
+                                  <span key={'t' + ti} className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold">
+                                    รุ่น {label}
+                                  </span>
+                                ))}
+                                {[...dateLabels].map((label, di) => (
+                                  <span key={'d' + di} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-medium">
+                                    <Calendar className="w-2.5 h-2.5" strokeWidth={2} />
+                                    {label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <span className="text-[11px] text-red-600 font-semibold opacity-0 group-hover:opacity-100 transition flex items-center gap-1 flex-shrink-0">
-                          ดู QR <ArrowRight className="w-3 h-3" />
-                        </span>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -2182,38 +2242,133 @@ function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSel
 // ============================================================
 function QRModal({ open, onClose, registration, racer }) {
   if (!racer) return null;
+
+  // จัดกลุ่ม รายการแข่งตาม date + tier
   const racerItems = [];
-  for (const did of racer.selectedDates) {
+  for (const did of racer.selectedDates || []) {
     const dateObj = RACE_DATES.find(d => d.id === did);
-    for (const tid of (racer.selectedRaces[did] || [])) {
+    for (const tid of (racer.selectedRaces?.[did] || [])) {
       const t = RACE_TIERS.find(x => x.id === tid);
-      if (dateObj && t) racerItems.push({ date: dateObj.short, tier: t.label });
+      if (dateObj && t) racerItems.push({ date: dateObj, tier: t });
     }
   }
 
+  // คำนวณอายุจาก birthDate ถ้ามี
+  const calcAge = () => {
+    if (!racer.birthDate) return null;
+    const birth = new Date(racer.birthDate);
+    const now = new Date();
+    const years = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    return m < 0 || (m === 0 && now.getDate() < birth.getDate()) ? years - 1 : years;
+  };
+  const age = calcAge();
+  const racerNo = String(racer.id || '').slice(-6).padStart(6, '0');
+
   return (
-    <Modal open={open} onClose={onClose} title="QR Code ลงทะเบียน">
-      <div className="text-center">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-700 mb-3 shadow-lg shadow-red-500/30">
-          <Flag className="w-6 h-6 text-white" strokeWidth={2} />
-        </div>
-        <h3 className="text-lg font-bold text-slate-900 mb-0.5">{racer.thFirstName} {racer.thLastName}</h3>
-        <p className="text-xs text-slate-500 mb-1">{racer.enFirstName} {racer.enLastName}</p>
-        <p className="font-mono text-xs font-semibold text-red-600 mb-4">{registration.refId}</p>
+    <Modal open={open} onClose={onClose} title="บัตรนักแข่ง">
+      <div>
+        {/* บัตรนักแข่ง — racing-pass style */}
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-red-950 text-white mb-4 shadow-xl">
+          {/* decoration */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/20 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
 
-        <div className="w-44 h-44 mx-auto bg-white border-2 border-slate-200 rounded-xl p-2 shadow-md mb-3">
-          <QRPattern />
-        </div>
-        <p className="text-[11px] text-slate-500 mb-4">📌 แสดง QR นี้ต่อเจ้าหน้าที่ในวันแข่งขัน</p>
+          <div className="relative p-5">
+            {/* Header: GPRC badge + racer number */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/40">
+                  <Trophy className="w-5 h-5 text-white" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-red-300 uppercase tracking-widest leading-none">Grandprix Runbike</p>
+                  <p className="text-[10px] font-bold text-white/80 leading-tight mt-0.5">CHAMPIONSHIP 2026</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] text-white/50 uppercase tracking-wider leading-none">เลขนักแข่ง</p>
+                <p className="font-mono text-base font-black tracking-wider text-red-300 mt-0.5">#{racerNo}</p>
+              </div>
+            </div>
 
+            {/* ชื่อ-นามสกุล */}
+            <div className="mb-4">
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">ชื่อ-นามสกุล</p>
+              <h3 className="text-2xl font-black tracking-tight leading-tight">
+                {racer.thFirstName} {racer.thLastName}
+              </h3>
+              <p className="text-sm text-white/60 mt-0.5">
+                {racer.enFirstName} {racer.enLastName}
+              </p>
+            </div>
+
+            {/* meta grid: เพศ · อายุ · ผู้สมัคร */}
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-white/10">
+              <div>
+                <p className="text-[9px] text-white/40 uppercase tracking-wider">เพศ</p>
+                <p className="text-sm font-bold text-white mt-0.5">
+                  {racer.gender === 'M' ? 'ชาย' : racer.gender === 'F' ? 'หญิง' : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] text-white/40 uppercase tracking-wider">อายุ</p>
+                <p className="text-sm font-bold text-white mt-0.5">{age !== null ? `${age} ปี` : '—'}</p>
+              </div>
+              <div>
+                <p className="text-[9px] text-white/40 uppercase tracking-wider">รายการ</p>
+                <p className="text-sm font-bold text-white mt-0.5">{racerItems.length} รุ่น</p>
+              </div>
+            </div>
+          </div>
+
+          {/* QR section — separator + light bg */}
+          <div className="bg-white px-5 pt-4 pb-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">QR Code ลงทะเบียน</p>
+                <p className="font-mono text-xs font-bold text-red-600 mt-0.5">{registration.refId}</p>
+              </div>
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold">
+                <Check className="w-3 h-3" strokeWidth={3} />
+                ยืนยันแล้ว
+              </span>
+            </div>
+            <div className="w-44 h-44 mx-auto bg-white border-2 border-slate-200 rounded-xl p-2 shadow-md">
+              <QRPattern />
+            </div>
+            <p className="text-[11px] text-slate-500 text-center mt-3">📌 แสดง QR นี้ต่อเจ้าหน้าที่ในวันแข่งขัน</p>
+          </div>
+        </div>
+
+        {/* รายการแข่ง — detailed */}
         {racerItems.length > 0 && (
-          <div className="rounded-lg border border-slate-200 text-left p-3 mb-3 bg-slate-50/50">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">รายการแข่ง</p>
-            <div className="space-y-1">
+          <div className="rounded-xl border-2 border-slate-200 overflow-hidden mb-4">
+            <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
+                <Flag className="w-3.5 h-3.5 text-red-600" strokeWidth={2.5} />
+                รายการที่ลงแข่ง ({racerItems.length})
+              </p>
+              <span className="text-[10px] text-slate-500">มิถุนายน 2569</span>
+            </div>
+            <div className="divide-y divide-slate-100">
               {racerItems.map((item, i) => (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-700">{item.date}</span>
-                  <span className="font-semibold text-slate-900">รุ่น {item.tier}</span>
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-red-50 to-red-100 border border-red-200 flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-bold text-red-600 leading-none">{item.date.short?.split(' ')[1] || 'มิ.ย.'}</span>
+                    <span className="text-base font-black text-red-700 leading-none">{item.date.short?.split(' ')[0] || ''}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">
+                      รุ่น {item.tier.label}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {item.date.day} · {item.tier.desc || item.tier.ageRange || ''}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 font-mono flex-shrink-0">
+                    {fmt(item.tier.price || 0)} ฿
+                  </span>
                 </div>
               ))}
             </div>
@@ -2245,7 +2400,63 @@ function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    // ถ้าอยู่ในหน้า landing แล้ว login จะไปหน้า history
+    // เพิ่ม mock registrations เริ่มต้น ถ้ายังไม่มี เพื่อให้เห็นตัวอย่างทันที
+    if (registrations.length === 0) {
+      const mockRegistrations = [
+        {
+          id: Date.now() - 1000000,
+          refId: 'REG-20260315',
+          date: '15 มี.ค. 2569',
+          racers: [
+            {
+              id: 'R001',
+              thFirstName: 'ภูริชญา',
+              thLastName: 'จันทร์เพ็ญ',
+              enFirstName: 'Phurichaya',
+              enLastName: 'Chanphen',
+              gender: 'F',
+              birthDate: '2020-08-12',
+              selectedDates: ['D1', 'D3'],
+              selectedRaces: { D1: ['U3'], D3: ['GS'] },
+            },
+            {
+              id: 'R002',
+              thFirstName: 'ธีรภัทร',
+              thLastName: 'จันทร์เพ็ญ',
+              enFirstName: 'Teerapat',
+              enLastName: 'Chanphen',
+              gender: 'M',
+              birthDate: '2022-03-25',
+              selectedDates: ['D1', 'D2'],
+              selectedRaces: { D1: ['U2'], D2: ['OJ'] },
+            },
+          ],
+          totalItems: 4,
+          total: 2800,
+        },
+        {
+          id: Date.now() - 500000,
+          refId: 'REG-20260420',
+          date: '20 เม.ย. 2569',
+          racers: [
+            {
+              id: 'R003',
+              thFirstName: 'อนุภัทร',
+              thLastName: 'วงศ์สว่าง',
+              enFirstName: 'Anupat',
+              enLastName: 'Wongsawang',
+              gender: 'M',
+              birthDate: '2018-11-30',
+              selectedDates: ['D5', 'D7'],
+              selectedRaces: { D5: ['U5'], D7: ['OP'] },
+            },
+          ],
+          totalItems: 2,
+          total: 2000,
+        },
+      ];
+      setRegistrations(mockRegistrations);
+    }
     setView('history');
   };
 

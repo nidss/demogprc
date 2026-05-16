@@ -8,6 +8,7 @@ const MASCOT_LEFT = './assets/mascot-left.jpg';
 const MASCOT_RIGHT = './assets/mascot-right.jpg';
 const HERO_BANNER = './assets/hero.png';
 const SUCCESS_BANNER = './assets/success.png';
+const GRANDPRIX_LOGO = './assets/grandprix-logo.png';
 
 
 // ============================================================
@@ -1682,9 +1683,9 @@ function Navbar({ currentView, onNavigate, user, onLogin, onLogout, transparent 
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
         {/* Logo */}
-        <button onClick={() => onNavigate('landing')} className="flex items-center gap-2 hover:opacity-80 transition">
-          <img src={LOGO_DATA_URL} alt="Runbike" className="h-9 w-auto brightness-0 invert" />
-          <span className="text-base font-bold tracking-tight text-white">Runbike</span>
+        <button onClick={() => onNavigate('landing')} className="flex items-center gap-2.5 hover:opacity-80 transition">
+          <img src={GRANDPRIX_LOGO} alt="Grandprix" className="h-9 sm:h-10 w-auto" />
+          <span className="text-base sm:text-lg font-bold tracking-tight text-white">Runbike</span>
         </button>
 
         {/* Desktop nav */}
@@ -1708,7 +1709,7 @@ function Navbar({ currentView, onNavigate, user, onLogin, onLogout, transparent 
         {/* Right area */}
         <div className="flex items-center gap-3">
           {/* Search icon */}
-          <button className="hidden sm:flex w-9 h-9 items-center justify-center text-white/80 hover:text-white transition" aria-label="ค้นหา">
+          <button className="hidden sm:inline-flex w-10 h-10 items-center justify-center text-white/80 hover:text-white transition" aria-label="ค้นหา">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3.5-3.5" strokeLinecap="round" />
@@ -1740,13 +1741,13 @@ function Navbar({ currentView, onNavigate, user, onLogin, onLogout, transparent 
             <>
               <button
                 onClick={() => onLogin('login')}
-                className="hidden sm:inline-flex h-9 px-4 text-sm font-medium text-white hover:text-red-400 transition"
+                className="hidden sm:inline-flex items-center justify-center h-10 px-4 text-sm font-semibold text-white hover:text-red-400 transition leading-none"
               >
                 เข้าสู่ระบบ
               </button>
               <button
                 onClick={() => onLogin('register')}
-                className="inline-flex items-center justify-center h-9 px-4 text-sm font-semibold rounded-full bg-red-600 hover:bg-red-700 text-white transition"
+                className="inline-flex items-center justify-center h-10 px-5 text-sm font-semibold rounded-full bg-red-600 hover:bg-red-700 text-white transition leading-none"
               >
                 สมัครสมาชิก
               </button>
@@ -1843,7 +1844,7 @@ function LandingPage({ onRegisterClick, user }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <img src={LOGO_DATA_URL} alt="Runbike" className="h-8 w-auto brightness-0 invert" />
+                <img src={GRANDPRIX_LOGO} alt="Grandprix" className="h-9 w-auto" />
                 <span className="text-base font-bold text-white">Runbike</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed">

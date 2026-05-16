@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRANDPRIX RUNBIKE CHAMPIONSHIP 2026 — ลงทะเบียนนักแข่ง</title>
+  <meta name="description" content="ระบบลงทะเบียนนักแข่ง Grandprix Runbike Championship 2026" />
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="GRANDPRIX RUNBIKE CHAMPIONSHIP 2026" />
+  <meta property="og:description" content="ระบบลงทะเบียนนักแข่ง Grandprix Runbike Championship" />
+  <meta property="og:image" content="./assets/hero.png" />
+
+  <!-- Tailwind Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Babel standalone for JSX transform in browser -->
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+  <!-- Import map: resolve bare imports to esm.sh URLs -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+      "lucide-react": "https://esm.sh/lucide-react@0.383.0?deps=react@18.3.1"
+    }
+  }
+  </script>
+
+  <style>
+    html { font-family: 'Inter', 'Noto Sans Thai', system-ui, -apple-system, sans-serif; }
+    body { margin: 0; }
+    #loader {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #fef2f2; z-index: 9999; transition: opacity 0.4s;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 44px; height: 44px; border: 3px solid #fecaca;
+      border-top-color: #dc2626; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { margin-top: 16px; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div id="loader">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <div class="loader-text">กำลังโหลด...</div>
+    </div>
+  </div>
+  <div id="root"></div>
+
+  <!-- Transform JSX in browser + load as module -->
+  <script type="module">
+    // 1. Fetch the JSX source
+    const response = await fetch('./app.jsx');
+    const jsxSource = await response.text();
+
+    // 2. Transform JSX → JS (preserve ESM imports)
+    const { code } = Babel.transform(jsxSource, {
+      presets: [
+        ['react', { runtime: 'classic' }]
+      ]
+    });
+
+    // 3. Inject as ESM module via blob URL so importmap can resolve imports
+    const blob = new Blob([code], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    await import(url);
+    URL.revokeObjectURL(url);
+
+    // 4. Hide loader
+    setTimeout(() => {
+      const l = document.getElementById('loader');
+      if (l) { l.classList.add('hidden'); setTimeout(() => l.remove(), 400); }
+    }, 200);
+  </script>
+
+  <script>
+    // Error handler — แสดงข้อความถ้า load ไม่สำเร็จ
+    window.addEventListener('error', (e) => {
+      console.error(e);
+      const loader = document.getElementById('loader');
+      if (loader) {
+        loader.innerHTML = '<div style="text-align:center;padding:20px;max-width:400px"><div style="color:#dc2626;font-weight:600;margin-bottom:8px">ไม่สามารถโหลดได้</div><div style="font-size:12px;color:#64748b">' + (e.message || 'Unknown error') + '</div></div>';
+      }
+    });
+  </script>
+</body>
+</html>
+

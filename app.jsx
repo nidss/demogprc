@@ -7,6 +7,7 @@ const BG_DATA_URL = './assets/bg.jpg';
 const MASCOT_LEFT = './assets/mascot-left.jpg';
 const MASCOT_RIGHT = './assets/mascot-right.jpg';
 const HERO_BANNER = './assets/hero.png';
+const SUCCESS_BANNER = './assets/success.png';
 
 
 // ============================================================
@@ -1593,37 +1594,17 @@ function StepSuccess({ racers, data, reset }) {
   return (
     <Card>
       <div className="max-w-md mx-auto">
-        {/* mascots + trophy section */}
-        <div className="relative flex items-center justify-center mb-5 min-h-[120px]">
-          {/* mascots ขนาบข้าง — ซ่อนบน mobile เพื่อไม่ให้แน่นเกิน */}
+        {/* Success banner — รูปเดียวมีทั้ง trophy, mascot, badge */}
+        <div className="-mx-5 sm:-mx-6 -mt-5 sm:-mt-6 mb-5 overflow-hidden rounded-t-2xl">
           <img
-            src={MASCOT_LEFT}
-            alt=""
-            className="hidden sm:block absolute left-0 top-1/2 -translate-y-1/2 h-24 w-auto object-contain opacity-90 select-none pointer-events-none"
-            aria-hidden="true"
+            src={SUCCESS_BANNER}
+            alt="สำเร็จแล้ว"
+            className="w-full h-auto block"
           />
-          <img
-            src={MASCOT_RIGHT}
-            alt=""
-            className="hidden sm:block absolute right-0 top-1/2 -translate-y-1/2 h-24 w-auto object-contain opacity-90 select-none pointer-events-none"
-            aria-hidden="true"
-          />
-
-          {/* Trophy badge — กลาง */}
-          <div className="relative">
-            <span className="absolute inset-0 rounded-full bg-red-500/30 blur-2xl scale-150" aria-hidden="true" />
-            <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-xl shadow-red-500/40">
-              <Trophy className="w-10 h-10 text-white" strokeWidth={2} />
-            </div>
-          </div>
         </div>
 
-        {/* Success badge + title */}
+        {/* Headline */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold uppercase tracking-widest rounded-full mb-3">
-            <Sparkles className="w-3 h-3" strokeWidth={2.5} />
-            สำเร็จแล้ว
-          </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1.5 tracking-tight">เจอกันที่สนามแข่ง!</h2>
           <p className="text-sm text-slate-500">เราได้ส่งอีเมลยืนยันการลงทะเบียนไปยังอีเมลของท่านแล้ว</p>
         </div>

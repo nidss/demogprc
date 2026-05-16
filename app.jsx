@@ -9,6 +9,7 @@ const MASCOT_RIGHT = './assets/mascot-right.jpg';
 const HERO_BANNER = './assets/hero.png';
 const SUCCESS_BANNER = './assets/success.png';
 const GRANDPRIX_LOGO = './assets/grandprix-logo.png';
+const HERO_VIDEO = './assets/GRANDPRIX%20RUNBIKE%20CHAMPIONSHIP%20_Monomax.mp4';
 
 
 // ============================================================
@@ -1815,7 +1816,7 @@ function LandingPage({ onRegisterClick, user }) {
       status: 'รอการประกาศ',
       registered: 9,
       capacity: 200,
-      // bg image: ใช้ hero banner ของเรา / fallback
+      coverVideo: HERO_VIDEO,
       coverImage: HERO_BANNER,
       darkOverlay: true,
     },
@@ -1827,6 +1828,7 @@ function LandingPage({ onRegisterClick, user }) {
       status: 'รอติดตาม',
       registered: 3,
       capacity: 100,
+      coverVideo: HERO_VIDEO,
       coverImage: SUCCESS_BANNER,
       darkOverlay: true,
     },
@@ -1894,12 +1896,27 @@ function EventHero({ event, onRegisterClick, index }) {
   return (
     <>
       <section className="relative h-screen min-h-[600px] overflow-hidden">
-        {/* Background image */}
-        <img
-          src={event.coverImage}
-          alt={event.title}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        {/* Background video / image */}
+        {event.coverVideo ? (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={event.coverImage}
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src={event.coverVideo} type="video/mp4" />
+            {/* Fallback ถ้า browser ไม่รองรับ — แสดง poster image */}
+            <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
+          </video>
+        ) : (
+          <img
+            src={event.coverImage}
+            alt={event.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/80" aria-hidden="true" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" aria-hidden="true" />

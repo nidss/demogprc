@@ -1592,25 +1592,41 @@ function StepSuccess({ racers, data, reset }) {
 
   return (
     <Card>
-      <div className="text-center max-w-md mx-auto py-2 relative">
-        {/* mascots ขนาบข้าง */}
-        <img src={MASCOT_LEFT} alt="" className="absolute -left-2 sm:-left-4 top-0 h-20 sm:h-24 w-auto object-contain opacity-90 select-none pointer-events-none" aria-hidden="true" />
-        <img src={MASCOT_RIGHT} alt="" className="absolute -right-2 sm:-right-4 top-0 h-20 sm:h-24 w-auto object-contain opacity-90 select-none pointer-events-none" aria-hidden="true" />
+      <div className="max-w-md mx-auto">
+        {/* mascots + trophy section */}
+        <div className="relative flex items-center justify-center mb-5 min-h-[120px]">
+          {/* mascots ขนาบข้าง — ซ่อนบน mobile เพื่อไม่ให้แน่นเกิน */}
+          <img
+            src={MASCOT_LEFT}
+            alt=""
+            className="hidden sm:block absolute left-0 top-1/2 -translate-y-1/2 h-24 w-auto object-contain opacity-90 select-none pointer-events-none"
+            aria-hidden="true"
+          />
+          <img
+            src={MASCOT_RIGHT}
+            alt=""
+            className="hidden sm:block absolute right-0 top-1/2 -translate-y-1/2 h-24 w-auto object-contain opacity-90 select-none pointer-events-none"
+            aria-hidden="true"
+          />
 
-        {/* success badge */}
-        <div className="relative inline-flex items-center justify-center mb-4 mt-4">
-          <span className="absolute inset-0 rounded-full bg-red-500/30 blur-2xl scale-150" aria-hidden="true" />
-          <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-xl shadow-red-500/40">
-            <Trophy className="w-8 h-8 text-white" strokeWidth={2} />
+          {/* Trophy badge — กลาง */}
+          <div className="relative">
+            <span className="absolute inset-0 rounded-full bg-red-500/30 blur-2xl scale-150" aria-hidden="true" />
+            <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-xl shadow-red-500/40">
+              <Trophy className="w-10 h-10 text-white" strokeWidth={2} />
+            </div>
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold uppercase tracking-widest rounded-full mb-2">
-          <Sparkles className="w-3 h-3" strokeWidth={2.5} />
-          สำเร็จแล้ว
+        {/* Success badge + title */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold uppercase tracking-widest rounded-full mb-3">
+            <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+            สำเร็จแล้ว
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1.5 tracking-tight">เจอกันที่สนามแข่ง!</h2>
+          <p className="text-sm text-slate-500">เราได้ส่งอีเมลยืนยันการลงทะเบียนไปยังอีเมลของท่านแล้ว</p>
         </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">เจอกันที่สนามแข่ง!</h2>
-        <p className="text-sm text-slate-500 mb-6">เราได้ส่งอีเมลยืนยันการลงทะเบียนไปยังอีเมลของท่านแล้ว</p>
 
         <div className="rounded-xl border-2 border-slate-200 p-4 text-left space-y-2 mb-5 bg-white">
           <div className="flex justify-between text-sm">
@@ -1631,7 +1647,7 @@ function StepSuccess({ racers, data, reset }) {
           </div>
         </div>
 
-        <div className="rounded-xl border-2 border-dashed border-red-200 p-4 mb-5 bg-red-50/30">
+        <div className="rounded-xl border-2 border-dashed border-red-200 p-4 mb-5 bg-red-50/30 text-center">
           <p className="text-xs font-semibold text-red-600 mb-2 uppercase tracking-wide">QR Code ลงทะเบียน</p>
           <div className="w-32 h-32 mx-auto bg-white border-2 border-slate-200 rounded-lg p-1.5 shadow-md">
             <QRPattern />

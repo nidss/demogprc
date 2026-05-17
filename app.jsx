@@ -11,6 +11,33 @@ const SUCCESS_BANNER = './assets/success.png';
 const GRANDPRIX_LOGO = './assets/grandprix-logo.png';
 const HERO_VIDEO = './assets/GRANDPRIX%20RUNBIKE%20CHAMPIONSHIP%20_Monomax.mp4';
 
+// Events available for registration
+const EVENTS = [
+  {
+    id: 'evt1',
+    title: 'RUN BIKE',
+    subtitle: 'ซีรีส์เปิดสนาม',
+    dateRange: '26 มีนาคม 2569 - 26 มี.ค.',
+    venue: 'สนามแข่งหลัก กรุงเทพฯ',
+    status: 'รอการประกาศ',
+    registered: 9,
+    capacity: 200,
+    coverImage: './assets/hero.png',
+  },
+  {
+    id: 'evt2',
+    title: 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026',
+    subtitle: 'รายการแชมเปี้ยนชิประดับประเทศ',
+    dateRange: '26 มีนาคม 2569 - 27 มี.ค.',
+    venue: 'Siam Amazing Park · IMPACT Muangthong Thani',
+    status: 'รอติดตาม',
+    registered: 3,
+    capacity: 100,
+    coverImage: './assets/success.png',
+    featured: true,
+  },
+];
+
 
 // ============================================================
 // CONFIG
@@ -2101,6 +2128,106 @@ function LoginModal({ open, onClose, onLogin, defaultMode = 'login' }) {
 }
 
 // ============================================================
+// EVENT SELECT MODAL — เลือก event ก่อนไปลงทะเบียน
+// ============================================================
+function EventSelectModal({ open, onClose, events, onSelectEvent }) {
+  return (
+    <Modal open={open} onClose={onClose} title="เลือกการแข่งขันที่จะลงทะเบียน">
+      <p className="text-xs text-slate-500 mb-4">เลือกรายการที่ต้องการลงทะเบียนนักแข่ง</p>
+      <div className="space-y-3">
+        {events.map(evt => {
+          const pct = Math.round((evt.registered / evt.capacity) * 100);
+          const isFull = evt.registered >= evt.capacity;
+          return (
+            <button
+              key={evt.id}
+              onClick={() => !isFull && onSelectEvent(evt)}
+              disabled={isFull}
+              className={`group w-full text-left rounded-xl overflow-hidden border-2 transition-all ${
+                isFull
+                  ? 'border-slate-200 opacity-60 cursor-not-allowed'
+                  : 'border-slate-200 hover:border-red-300 hover:shadow-lg hover:-translate-y-0.5'
+              }`}
+            >
+              {/* Cover thumbnail strip */}
+              <div className="relative h-24 overflow-hidden bg-gradient-to-br from-slate-800 to-red-900">
+                <img
+                  src={evt.coverImage}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
+                {evt.featured && (
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold uppercase tracking-widest shadow-md">
+                    <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
+                    แนะนำ
+                  </span>
+                )}
+                <span className={`absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md ${
+                  isFull ? 'bg-slate-900/70 text-white/70' : 'bg-white/90 text-red-600'
+                }`}>
+                  <Flag className="w-2.5 h-2.5" strokeWidth={2.5} />
+                  {isFull ? 'เต็มแล้ว' : evt.status}
+                </span>
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest leading-none">{evt.subtitle}</p>
+                  <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight mt-0.5 drop-shadow line-clamp-1">
+                    {evt.title}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="p-3 bg-white">
+                <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="w-3 h-3" strokeWidth={2} />
+                    {evt.dateRange}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3 h-3" strokeWidth={2} />
+                    {evt.venue}
+                  </span>
+                </div>
+
+                {/* Progress + select indicator */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between text-[10px] mb-1">
+                      <span className="text-slate-500">ผู้สมัคร</span>
+                      <span className="font-bold text-slate-900">{evt.registered}/{evt.capacity} คน</span>
+                    </div>
+                    <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          isFull ? 'bg-slate-400' : 'bg-gradient-to-r from-red-500 to-red-700'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  {!isFull && (
+                    <span className="inline-flex items-center gap-1 text-xs text-red-600 font-bold opacity-60 group-hover:opacity-100 transition flex-shrink-0">
+                      เลือก <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <button
+        onClick={onClose}
+        className="w-full mt-4 h-10 text-sm font-medium text-slate-500 hover:text-slate-700 transition"
+      >
+        ยกเลิก
+      </button>
+    </Modal>
+  );
+}
+
+// ============================================================
 // HISTORY PAGE
 // ============================================================
 function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSelectRegistration }) {
@@ -2409,6 +2536,8 @@ function App() {
   const [loginMode, setLoginMode] = useState('login');
   const [registrations, setRegistrations] = useState([]);
   const [qrModal, setQrModal] = useState({ open: false, registration: null, racer: null });
+  const [eventSelectOpen, setEventSelectOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const openLogin = (mode = 'login') => {
     setLoginMode(mode);
@@ -2484,7 +2613,19 @@ function App() {
 
   const handleRegisterClick = (mode = null) => {
     if (mode === 'login') { openLogin('login'); return; }
-    // กด "สมัครเลย" — ถ้า login แล้วไปหน้า register flow (เริ่มที่ step 2 ใส่ชื่อนักแข่งเลย)
+    // landing — รับ event โดยตรง (event_id) หรือเปิด modal ถ้าไม่ได้ระบุ
+    if (mode && typeof mode === 'object' && mode.id) {
+      setSelectedEvent(mode);
+      setView('register');
+      return;
+    }
+    // ไม่ได้ระบุ event → เปิด event select modal
+    setEventSelectOpen(true);
+  };
+
+  const handleSelectEvent = (evt) => {
+    setSelectedEvent(evt);
+    setEventSelectOpen(false);
     setView('register');
   };
 
@@ -2542,6 +2683,7 @@ function App() {
                 onComplete={handleRegistrationComplete}
                 startStep={user ? 2 : 1}
                 prefillUser={user}
+                selectedEvent={selectedEvent}
               />
             </div>
           </div>
@@ -2551,7 +2693,7 @@ function App() {
           <HistoryPage
             user={user}
             registrations={registrations}
-            onRegisterClick={() => setView('register')}
+            onRegisterClick={() => setEventSelectOpen(true)}
             onBackToHome={() => setView('landing')}
             onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
           />
@@ -2563,6 +2705,13 @@ function App() {
         onClose={() => setLoginOpen(false)}
         onLogin={handleLogin}
         defaultMode={loginMode}
+      />
+
+      <EventSelectModal
+        open={eventSelectOpen}
+        onClose={() => setEventSelectOpen(false)}
+        events={EVENTS}
+        onSelectEvent={handleSelectEvent}
       />
 
       <QRModal
@@ -2578,7 +2727,7 @@ function App() {
 // ============================================================
 // MAIN APP (multi-step registration flow)
 // ============================================================
-function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser }) {
+function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent }) {
   const [step, setStep] = useState(startStep);
   const [data, setData] = useState({
     username: prefillUser?.username || '',
@@ -2589,13 +2738,14 @@ function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser
     guardian: { name: '', address: '', email: '', phone: '' },
     couponCode: '', appliedCoupon: null,
     finalTotal: 0, subtotal: 0, discount: 0,
+    eventId: selectedEvent?.id || null,
+    eventTitle: selectedEvent?.title || null,
   });
   const [racers, setRacers] = useState([newRacer()]);
 
   const next = () => setStep(s => Math.min(s + 1, 6));
   const prev = () => setStep(s => Math.max(s - 1, startStep));
   const reset = () => {
-    // เรียก onComplete เพื่อกลับไป history หรือ home
     if (onComplete) {
       onComplete({ racers, data });
       return;
@@ -2615,8 +2765,27 @@ function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser
         </button>
       )}
 
-      {/* Hero banner */}
-      {step === startStep && step === 1 && (
+      {/* Event banner — แสดง event ที่เลือก */}
+      {selectedEvent && step <= 5 && (
+        <div className="mb-4 rounded-xl overflow-hidden border-2 border-red-200 bg-gradient-to-r from-slate-900 to-red-950 text-white relative">
+          <div className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden border border-white/20 flex-shrink-0 bg-slate-800">
+              <img src={selectedEvent.coverImage} alt="" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] sm:text-[10px] font-bold text-red-300 uppercase tracking-widest leading-none mb-1">กำลังลงทะเบียน</p>
+              <p className="text-sm sm:text-base font-black text-white tracking-tight truncate leading-tight">{selectedEvent.title}</p>
+              <p className="text-[10px] sm:text-[11px] text-white/60 mt-0.5 flex items-center gap-1 truncate">
+                <Calendar className="w-3 h-3 flex-shrink-0" strokeWidth={2} />
+                <span className="truncate">{selectedEvent.dateRange}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hero banner — แสดงเฉพาะกรณี landing ไม่ login แล้วเริ่ม step 1 + ไม่มี selectedEvent */}
+      {!selectedEvent && step === startStep && step === 1 && (
         <div className="mb-4 sm:mb-5 -mx-2 sm:mx-0 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl shadow-red-900/10">
           <img
             src={HERO_BANNER}

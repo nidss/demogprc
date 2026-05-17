@@ -1963,7 +1963,7 @@ function EventHero({ event, onRegisterClick, index }) {
             <Pill icon={Flag}>{event.status}</Pill>
             <Pill icon={User}>{event.registered}/{event.capacity} คน</Pill>
             <button
-              onClick={onRegisterClick}
+              onClick={() => onRegisterClick(event)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition shadow-lg shadow-red-600/40 group"
             >
               สมัครเลย

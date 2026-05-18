@@ -119,12 +119,39 @@ const newRacer = () => ({
   id: Date.now() + Math.random(),
   thFirstName: '', thLastName: '',
   enFirstName: '', enLastName: '',
+  nickname: '',
   birthDate: '',
   gender: '', // 'male' | 'female'
-  documents: [], // [{ name, size, type, dataUrl }]
+  shirtSize: '', // XS | S | M | L | XL | XXL | 3XL
+  country: 'TH', // ISO code
+  teamName: '',
+  documents: [],
   selectedDates: [],
   selectedRaces: {},
 });
+
+// Shirt sizes
+const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
+// Countries (Thailand + ASEAN + ที่ใกล้)
+const COUNTRIES = [
+  { code: 'TH', name: 'ไทย', flag: '🇹🇭' },
+  { code: 'LA', name: 'ลาว', flag: '🇱🇦' },
+  { code: 'KH', name: 'กัมพูชา', flag: '🇰🇭' },
+  { code: 'MY', name: 'มาเลเซีย', flag: '🇲🇾' },
+  { code: 'SG', name: 'สิงคโปร์', flag: '🇸🇬' },
+  { code: 'VN', name: 'เวียดนาม', flag: '🇻🇳' },
+  { code: 'ID', name: 'อินโดนีเซีย', flag: '🇮🇩' },
+  { code: 'PH', name: 'ฟิลิปปินส์', flag: '🇵🇭' },
+  { code: 'MM', name: 'เมียนมา', flag: '🇲🇲' },
+  { code: 'JP', name: 'ญี่ปุ่น', flag: '🇯🇵' },
+  { code: 'KR', name: 'เกาหลีใต้', flag: '🇰🇷' },
+  { code: 'CN', name: 'จีน', flag: '🇨🇳' },
+  { code: 'TW', name: 'ไต้หวัน', flag: '🇹🇼' },
+  { code: 'HK', name: 'ฮ่องกง', flag: '🇭🇰' },
+  { code: 'AU', name: 'ออสเตรเลีย', flag: '🇦🇺' },
+  { code: 'OTHER', name: 'อื่นๆ', flag: '🌍' },
+];
 
 // ============================================================
 // PRIMITIVES
@@ -322,6 +349,109 @@ const RULES_SECTIONS = [
   },
 ];
 
+const PdpaContent = () => (
+  <div className="space-y-4">
+    <p className="text-xs text-slate-500 leading-relaxed">
+      <span className="font-semibold text-slate-900">GRANDPRIX RUNBIKE CHAMPIONSHIP 2026</span> ให้ความสำคัญกับการคุ้มครองข้อมูลส่วนบุคคลของท่านและผู้แข่งขัน โปรดอ่านนโยบายฉบับนี้โดยละเอียด เพื่อความเข้าใจในการเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคล
+    </p>
+
+    <div>
+      <h4 className="text-sm font-semibold text-slate-900 mb-1.5">1. ข้อมูลที่เราจัดเก็บ</h4>
+      <ul className="space-y-1">
+        {[
+          'ชื่อ-นามสกุล ของผู้สมัครและผู้แข่ง (ภาษาไทยและภาษาอังกฤษ)',
+          'วัน-เดือน-ปีเกิด, เพศ, อายุ ของผู้แข่ง',
+          'อีเมล เบอร์โทรศัพท์ และที่อยู่ของผู้ปกครอง',
+          'รูปสำเนาเอกสารยืนยันตัวตน (สูติบัตร/บัตรประชาชน) ของผู้แข่ง',
+          'ข้อมูลการชำระเงิน (ผ่านระบบ BEAM)',
+        ].map((item, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+            <span className="text-slate-400 flex-shrink-0">•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h4 className="text-sm font-semibold text-slate-900 mb-1.5">2. วัตถุประสงค์การใช้ข้อมูล</h4>
+      <ul className="space-y-1">
+        {[
+          'ลงทะเบียนเข้าร่วมการแข่งขันและจัดการรายชื่อนักแข่ง',
+          'ตรวจสอบคุณสมบัติ (เช่น อายุ) ตามรุ่นที่ลงแข่ง',
+          'ติดต่อสื่อสารเกี่ยวกับการแข่งขัน ผลการแข่งขัน และประชาสัมพันธ์กิจกรรมในเครือ',
+          'ออกใบเสร็จและจัดส่งของรางวัล',
+          'ตรวจสอบการชำระเงินและการเข้าร่วมงาน (เช่น เช็คอินหน้างาน)',
+        ].map((item, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+            <span className="text-slate-400 flex-shrink-0">•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h4 className="text-sm font-semibold text-slate-900 mb-1.5">3. การเปิดเผยข้อมูล</h4>
+      <ul className="space-y-1">
+        {[
+          'เราจะไม่เปิดเผยข้อมูลส่วนบุคคลของท่านต่อบุคคลที่สามโดยปราศจากความยินยอม',
+          'อาจเปิดเผยข้อมูลให้ผู้สนับสนุนหลัก (Sponsor) ตามที่ระบุในข้อตกลง',
+          'การเปิดเผยข้อมูลกับหน่วยงานราชการเป็นไปตามกฎหมายที่กำหนด',
+        ].map((item, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+            <span className="text-slate-400 flex-shrink-0">•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h4 className="text-sm font-semibold text-slate-900 mb-1.5">4. สิทธิของเจ้าของข้อมูล</h4>
+      <ul className="space-y-1">
+        {[
+          'ขอเข้าถึงข้อมูลส่วนบุคคลของตน',
+          'ขอแก้ไขข้อมูลที่ไม่ถูกต้อง',
+          'ขอลบหรือทำลายข้อมูล (ภายใต้เงื่อนไขที่กฎหมายกำหนด)',
+          'ขอถอนความยินยอมเมื่อใดก็ได้',
+          'ขอให้โอนถ่ายข้อมูลส่วนบุคคล',
+        ].map((item, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+            <span className="text-slate-400 flex-shrink-0">•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h4 className="text-sm font-semibold text-slate-900 mb-1.5">5. การเก็บรักษาข้อมูล</h4>
+      <ul className="space-y-1">
+        {[
+          'ข้อมูลจะถูกเก็บรักษาเป็นระยะเวลาที่จำเป็นตามวัตถุประสงค์',
+          'รูปและวิดีโอจากการแข่งขันอาจถูกเก็บไว้เพื่อประชาสัมพันธ์ในอนาคต',
+          'ข้อมูลทางการเงินจะถูกเก็บตามที่กฎหมายภาษีกำหนด',
+        ].map((item, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+            <span className="text-slate-400 flex-shrink-0">•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div className="rounded-md bg-slate-50 border border-slate-200 p-3 mt-4">
+      <p className="text-[11px] text-slate-500 leading-relaxed">
+        เจ้าหน้าที่คุ้มครองข้อมูล (DPO): <span className="font-medium text-slate-900">privacy@gprc.example.com</span> · โทร <span className="font-medium text-slate-900">02-XXX-XXXX</span>
+      </p>
+      <p className="text-[11px] text-slate-400 leading-relaxed mt-1">
+        การกด "รับทราบและยอมรับ" ถือเป็นการยินยอมให้จัดเก็บและใช้ข้อมูลส่วนบุคคลตามนโยบายฉบับนี้
+      </p>
+    </div>
+  </div>
+);
+
 const RulesContent = () => (
   <div className="space-y-4">
     <p className="text-xs text-slate-500 leading-relaxed">
@@ -425,6 +555,9 @@ function StepAccount({ data, setData, next }) {
   const [err, setErr] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [pdpaOpen, setPdpaOpen] = useState(false);
+  const [pdpaRead, setPdpaRead] = useState(false);
+  const [rulesRead, setRulesRead] = useState(false);
   const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
 
   useEffect(() => {
@@ -658,22 +791,38 @@ function StepAccount({ data, setData, next }) {
         <>
           <Header icon={ShieldCheck} title="ข้อตกลงและเงื่อนไข" subtitle="กรุณาอ่านและยอมรับเพื่อดำเนินการต่อ" />
           <div className="space-y-3">
-            <ConsentRow
+            <ConsentRowWithRead
               icon={ShieldCheck}
               title="นโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA)"
               desc="ข้าพเจ้ายินยอมให้จัดเก็บและใช้ข้อมูลส่วนบุคคลตามนโยบาย"
               checked={data.pdpa}
+              hasRead={pdpaRead}
               onChange={v => setData({ ...data, pdpa: v })}
+              onOpenRead={() => setPdpaOpen(true)}
+              linkText="อ่านนโยบายความเป็นส่วนตัว"
             />
-            <ConsentRow
+            <ConsentRowWithRead
               icon={Check}
               title="กฎ กติกาการแข่งขัน"
               desc="ข้าพเจ้าได้อ่านและยอมรับกฎกติกาการแข่งขันทุกข้อ"
               checked={data.rules}
+              hasRead={rulesRead}
               onChange={v => setData({ ...data, rules: v })}
-              link="อ่านกฎกติกาทั้งหมด"
-              onLinkClick={() => setRulesOpen(true)}
+              onOpenRead={() => setRulesOpen(true)}
+              linkText="อ่านกฎกติกาทั้งหมด"
             />
+
+            {(!pdpaRead || !rulesRead) && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+                <span className="text-amber-600 mt-0.5">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-amber-900">กรุณาอ่านเอกสารทั้ง 2 ฉบับก่อนยอมรับ</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    คลิกที่ลิงก์ "{!pdpaRead ? 'อ่านนโยบายความเป็นส่วนตัว' : 'อ่านกฎกติกาทั้งหมด'}" เพื่อเปิดอ่านก่อน
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-3">
               <Button variant="secondary" onClick={() => setPhase('otp')} className="flex-1">
@@ -685,6 +834,29 @@ function StepAccount({ data, setData, next }) {
             </div>
           </div>
 
+          {/* PDPA Modal */}
+          <Modal
+            open={pdpaOpen}
+            onClose={() => setPdpaOpen(false)}
+            title="นโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA)"
+            footer={
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => setPdpaOpen(false)} className="flex-1">
+                  ปิด
+                </Button>
+                <Button
+                  onClick={() => { setPdpaRead(true); setData({ ...data, pdpa: true }); setPdpaOpen(false); }}
+                  className="flex-1"
+                >
+                  <Check className="w-4 h-4" /> รับทราบและยอมรับ
+                </Button>
+              </div>
+            }
+          >
+            <PdpaContent />
+          </Modal>
+
+          {/* Rules Modal */}
           <Modal
             open={rulesOpen}
             onClose={() => setRulesOpen(false)}
@@ -695,10 +867,10 @@ function StepAccount({ data, setData, next }) {
                   ปิด
                 </Button>
                 <Button
-                  onClick={() => { setData({ ...data, rules: true }); setRulesOpen(false); }}
+                  onClick={() => { setRulesRead(true); setData({ ...data, rules: true }); setRulesOpen(false); }}
                   className="flex-1"
                 >
-                  <Check className="w-4 h-4" /> ยอมรับและปิด
+                  <Check className="w-4 h-4" /> รับทราบและยอมรับ
                 </Button>
               </div>
             }
@@ -735,6 +907,70 @@ const ConsentRow = ({ icon: Icon, title, desc, checked, onChange, link, onLinkCl
   </label>
 );
 
+// ConsentRowWithRead — บังคับให้กดอ่านก่อนถึงจะติ๊กได้
+const ConsentRowWithRead = ({ icon: Icon, title, desc, checked, hasRead, onChange, onOpenRead, linkText }) => {
+  const canCheck = hasRead;
+  return (
+    <div className={`rounded-lg border-2 p-3.5 transition ${
+      checked ? 'border-green-400 bg-green-50/50' :
+      hasRead ? 'border-slate-300 bg-white' :
+      'border-slate-200 bg-slate-50'
+    }`}>
+      <div className="flex items-start gap-3">
+        <div className="pt-0.5">
+          {checked ? (
+            <div className="w-5 h-5 rounded-md bg-green-600 flex items-center justify-center shadow-sm">
+              <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+            </div>
+          ) : (
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={!canCheck}
+              onChange={e => onChange(e.target.checked)}
+              className={`w-5 h-5 rounded-md ${canCheck ? 'accent-slate-900 cursor-pointer' : 'cursor-not-allowed opacity-40'}`}
+              title={canCheck ? '' : 'กรุณาเปิดอ่านเอกสารก่อน'}
+            />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <Icon className={`w-4 h-4 flex-shrink-0 ${checked ? 'text-green-600' : 'text-slate-900'}`} strokeWidth={1.75} />
+            <span className={`font-semibold text-sm ${checked ? 'text-green-900' : 'text-slate-900'}`}>{title}</span>
+            {hasRead && !checked && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] font-bold">
+                <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                อ่านแล้ว
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed mb-2">{desc}</p>
+
+          {!hasRead ? (
+            <button
+              type="button"
+              onClick={onOpenRead}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition"
+            >
+              <FileIcon className="w-3.5 h-3.5" strokeWidth={2} />
+              {linkText || 'เปิดอ่านเอกสาร'}
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenRead}
+              className="text-xs text-slate-500 hover:text-slate-900 hover:underline font-medium inline-flex items-center gap-1"
+            >
+              📄 เปิดอ่านอีกครั้ง
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ============================================================
 // STEP 2: RACERS
 // ============================================================
@@ -757,6 +993,12 @@ function StepRacers({ racers, setRacers, next, prev }) {
       }
       if (!r.gender) {
         return setErr(`กรุณาเลือกเพศของนักแข่ง "${r.thFirstName}"`);
+      }
+      if (!r.shirtSize) {
+        return setErr(`กรุณาเลือกไซส์เสื้อของนักแข่ง "${r.thFirstName}"`);
+      }
+      if (!r.country) {
+        return setErr(`กรุณาเลือกประเทศของนักแข่ง "${r.thFirstName}"`);
       }
       if (!r.documents || r.documents.length === 0) {
         return setErr(`กรุณาอัปโหลดเอกสารยืนยันตัวตนของนักแข่ง "${r.thFirstName}"`);
@@ -914,6 +1156,26 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                 <Input value={r.enLastName} onChange={e => onUpdate({ enLastName: e.target.value })} />
               </div>
               <div>
+                <Label>ชื่อเล่น</Label>
+                <Input
+                  placeholder="เช่น น้องเอ"
+                  value={r.nickname || ''}
+                  onChange={e => onUpdate({ nickname: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label required>ประเทศ</Label>
+                <select
+                  value={r.country || 'TH'}
+                  onChange={e => onUpdate({ country: e.target.value })}
+                  className="w-full h-10 px-3 text-sm rounded-md border border-slate-200 bg-white focus:border-slate-900 focus:ring-2 focus:ring-slate-200 outline-none transition"
+                >
+                  {COUNTRIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <Label required>เพศ</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <GenderOption
@@ -946,6 +1208,34 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                     </div>
                   )}
                 </div>
+              </div>
+              <div>
+                <Label required>ไซส์เสื้อ</Label>
+                <div className="grid grid-cols-7 gap-1">
+                  {SHIRT_SIZES.map(size => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => onUpdate({ shirtSize: size })}
+                      className={`h-10 text-xs font-bold rounded-md border-2 transition ${
+                        r.shirtSize === size
+                          ? 'border-red-600 bg-red-50 text-red-700 shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <Label>ชื่อทีม / สังกัด <span className="text-slate-400 font-normal">(ถ้ามี)</span></Label>
+                <Input
+                  icon={Flag}
+                  placeholder="เช่น Bangkok Runbike Club"
+                  value={r.teamName || ''}
+                  onChange={e => onUpdate({ teamName: e.target.value })}
+                />
               </div>
             </div>
           </div>
@@ -3547,23 +3837,23 @@ function App() {
         {
           id: Date.now() - 2000000, refId: 'REG-20260301', date: '1 มี.ค. 2569', eventId: 'evt2',
           racers: [
-            { id: 'R001', thFirstName: 'ภูริชญา', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Phurichaya', enLastName: 'Chanphen', gender: 'F', birthDate: '2020-08-12', selectedDates: ['D1', 'D3'], selectedRaces: { D1: ['U3'], D3: ['GS'] } },
-            { id: 'R002', thFirstName: 'ธีรภัทร', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Teerapat', enLastName: 'Chanphen', gender: 'M', birthDate: '2022-03-25', selectedDates: ['D1', 'D2'], selectedRaces: { D1: ['U2'], D2: ['OJ'] } },
+            { id: 'R001', thFirstName: 'ภูริชญา', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Phurichaya', enLastName: 'Chanphen', nickname: 'น้องฟ้า', gender: 'F', birthDate: '2020-08-12', shirtSize: 'S', country: 'TH', teamName: 'Bangkok Runbike Club', selectedDates: ['D1', 'D3'], selectedRaces: { D1: ['U3'], D3: ['GS'] } },
+            { id: 'R002', thFirstName: 'ธีรภัทร', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Teerapat', enLastName: 'Chanphen', nickname: 'น้องเต้', gender: 'M', birthDate: '2022-03-25', shirtSize: 'XS', country: 'TH', teamName: 'Bangkok Runbike Club', selectedDates: ['D1', 'D2'], selectedRaces: { D1: ['U2'], D2: ['OJ'] } },
           ],
           totalItems: 4, total: 2800,
         },
         {
           id: Date.now() - 1500000, refId: 'REG-20260315', date: '15 มี.ค. 2569', eventId: 'evt1',
           racers: [
-            { id: 'R003', thFirstName: 'อนุภัทร', thLastName: 'วงศ์สว่าง', enFirstName: 'Anupat', enLastName: 'Wongsawang', gender: 'M', birthDate: '2018-11-30', selectedDates: ['D5', 'D7'], selectedRaces: { D5: ['U5'], D7: ['OP'] } },
+            { id: 'R003', thFirstName: 'อนุภัทร', thLastName: 'วงศ์สว่าง', enFirstName: 'Anupat', enLastName: 'Wongsawang', nickname: 'น้องอนุ', gender: 'M', birthDate: '2018-11-30', shirtSize: 'M', country: 'TH', teamName: 'Chiang Mai Speedy', selectedDates: ['D5', 'D7'], selectedRaces: { D5: ['U5'], D7: ['OP'] } },
           ],
           totalItems: 2, total: 2000,
         },
         {
           id: Date.now() - 1000000, refId: 'REG-20260420', date: '20 เม.ย. 2569', eventId: 'evt2',
           racers: [
-            { id: 'R004', thFirstName: 'นภัสสร', thLastName: 'ศรีสุวรรณ', enFirstName: 'Naphatsorn', enLastName: 'Srisuwan', gender: 'F', birthDate: '2019-06-18', selectedDates: ['D2'], selectedRaces: { D2: ['U4'] } },
-            { id: 'R005', thFirstName: 'กิตติพงษ์', thLastName: 'ศรีสุวรรณ', enFirstName: 'Kittipong', enLastName: 'Srisuwan', gender: 'M', birthDate: '2017-09-05', selectedDates: ['D2', 'D4'], selectedRaces: { D2: ['U6'], D4: ['OS'] } },
+            { id: 'R004', thFirstName: 'นภัสสร', thLastName: 'ศรีสุวรรณ', enFirstName: 'Naphatsorn', enLastName: 'Srisuwan', nickname: 'น้องนัส', gender: 'F', birthDate: '2019-06-18', shirtSize: 'S', country: 'TH', teamName: '', selectedDates: ['D2'], selectedRaces: { D2: ['U4'] } },
+            { id: 'R005', thFirstName: 'กิตติพงษ์', thLastName: 'ศรีสุวรรณ', enFirstName: 'Kittipong', enLastName: 'Srisuwan', nickname: 'น้องโตโน่', gender: 'M', birthDate: '2017-09-05', shirtSize: 'L', country: 'LA', teamName: 'Lao Runners', selectedDates: ['D2', 'D4'], selectedRaces: { D2: ['U6'], D4: ['OS'] } },
           ],
           totalItems: 3, total: 2400,
         },
@@ -3610,8 +3900,12 @@ function App() {
               thLastName: 'จันทร์เพ็ญ',
               enFirstName: 'Phurichaya',
               enLastName: 'Chanphen',
+              nickname: 'น้องฟ้า',
               gender: 'F',
               birthDate: '2020-08-12',
+              shirtSize: 'S',
+              country: 'TH',
+              teamName: 'Bangkok Runbike Club',
               selectedDates: ['D1', 'D3'],
               selectedRaces: { D1: ['U3'], D3: ['GS'] },
             },
@@ -3621,8 +3915,12 @@ function App() {
               thLastName: 'จันทร์เพ็ญ',
               enFirstName: 'Teerapat',
               enLastName: 'Chanphen',
+              nickname: 'น้องเต้',
               gender: 'M',
               birthDate: '2022-03-25',
+              shirtSize: 'XS',
+              country: 'TH',
+              teamName: 'Bangkok Runbike Club',
               selectedDates: ['D1', 'D2'],
               selectedRaces: { D1: ['U2'], D2: ['OJ'] },
             },
@@ -3641,8 +3939,12 @@ function App() {
               thLastName: 'วงศ์สว่าง',
               enFirstName: 'Anupat',
               enLastName: 'Wongsawang',
+              nickname: 'น้องอนุ',
               gender: 'M',
               birthDate: '2018-11-30',
+              shirtSize: 'M',
+              country: 'TH',
+              teamName: 'Chiang Mai Speedy',
               selectedDates: ['D5', 'D7'],
               selectedRaces: { D5: ['U5'], D7: ['OP'] },
             },

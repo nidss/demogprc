@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { User, Phone, Mail, Lock, ShieldCheck, Calendar, Plus, Trash2, Tag, CreditCard, Check, ArrowLeft, ArrowRight, MapPin, X, ChevronDown, Upload, FileText as FileIcon, Sparkles, Zap, Flag, Trophy } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 // Logo as inline base64 — single-file portability

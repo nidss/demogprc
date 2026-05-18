@@ -20,6 +20,8 @@
 - 🎫 ใส่คูปองส่วนลด
 - 💳 ชำระเงินผ่าน BEAM (จำลอง)
 - ✅ QR Code ลงทะเบียน
+- หน้า Dashboard (Admin)
+- หน้า Check-in (Admin)
 
 ## 🧪 Test Coupons
 

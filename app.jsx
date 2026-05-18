@@ -1761,14 +1761,32 @@ function DateTierPicker({ date, eligible, selected, onToggle }) {
 // ============================================================
 // STEP 3: GUARDIAN
 // ============================================================
-function StepGuardian({ data, setData, next, prev }) {
+function StepGuardian({ data, setData, next, prev, savedGuardian }) {
   const [err, setErr] = useState('');
+  const [useSaved, setUseSaved] = useState(false);
   const g = data.guardian;
   const set = (patch) => setData({ ...data, guardian: { ...g, ...patch } });
 
+  const toggleUseSaved = (checked) => {
+    setUseSaved(checked);
+    if (checked && savedGuardian) {
+      // เอาเฉพาะ 4 fields ตาม spec: ชื่อ, ที่อยู่ติดต่อ, เบอร์, อีเมล
+      setData({
+        ...data,
+        guardian: {
+          ...g,
+          name: savedGuardian.name || '',
+          address: savedGuardian.contactAddress || '',
+          phone: savedGuardian.phone || '',
+          email: savedGuardian.email || '',
+        }
+      });
+    }
+  };
+
   const submit = () => {
     if (!g.name || !g.address || !g.email || !g.phone) return setErr('กรุณากรอกข้อมูลให้ครบ');
-    if (!/^0\d{9}$/.test(g.phone)) return setErr('เบอร์โทรไม่ถูกต้อง');
+    if (!/^0\d{9}$/.test(g.phone.replace(/[-\s]/g, ''))) return setErr('เบอร์โทรไม่ถูกต้อง');
     if (!/\S+@\S+\.\S+/.test(g.email)) return setErr('อีเมลไม่ถูกต้อง');
     setErr('');
     next();
@@ -1778,12 +1796,35 @@ function StepGuardian({ data, setData, next, prev }) {
     <Card>
       <Header icon={User} title="ข้อมูลผู้ปกครอง" subtitle="สำหรับติดต่อในกรณีฉุกเฉินและส่งใบเสร็จ" />
       <div className="space-y-3">
+        {/* Use saved guardian checkbox */}
+        {savedGuardian && (
+          <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+            useSaved ? 'border-red-300 bg-red-50/40' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+          }`}>
+            <input
+              type="checkbox"
+              checked={useSaved}
+              onChange={e => toggleUseSaved(e.target.checked)}
+              className="w-4 h-4 mt-0.5 accent-red-600 cursor-pointer"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-red-600" strokeWidth={2.5} />
+                ใช้ข้อมูลผู้ปกครองที่บันทึกไว้
+              </p>
+              <p className="text-[11px] text-slate-600 mt-0.5">
+                {savedGuardian.name} · {savedGuardian.phone} · {savedGuardian.email}
+              </p>
+            </div>
+          </label>
+        )}
+
         <div>
           <Label required>ชื่อ-นามสกุล</Label>
           <Input icon={User} placeholder="ชื่อ-นามสกุล ผู้ปกครอง" value={g.name} onChange={e => set({ name: e.target.value })} />
         </div>
         <div>
-          <Label required>ที่อยู่</Label>
+          <Label required>ที่อยู่ที่ติดต่อได้</Label>
           <div className="relative">
             <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" strokeWidth={1.5} />
             <textarea
@@ -1802,7 +1843,7 @@ function StepGuardian({ data, setData, next, prev }) {
           </div>
           <div>
             <Label required>เบอร์โทรศัพท์</Label>
-            <Input icon={Phone} placeholder="08X-XXX-XXXX" maxLength={10} value={g.phone} onChange={e => set({ phone: e.target.value.replace(/\D/g, '') })} />
+            <Input icon={Phone} placeholder="08X-XXX-XXXX" maxLength={12} value={g.phone} onChange={e => set({ phone: e.target.value })} />
           </div>
         </div>
 
@@ -2062,9 +2103,35 @@ function StepSummary({ racers, data, setData, next, prev }) {
 // ============================================================
 // STEP 5: PAYMENT
 // ============================================================
-function StepPayment({ data, next, prev }) {
+function StepPayment({ data, setData, next, prev, savedGuardian }) {
   const [method, setMethod] = useState('credit');
   const [processing, setProcessing] = useState(false);
+  const taxInvoice = data.taxInvoice || { enabled: false, useSaved: false, name: '', address: '', taxId: '', email: '' };
+
+  const updateTax = (patch) => setData({ ...data, taxInvoice: { ...taxInvoice, ...patch } });
+
+  const toggleEnabled = (v) => {
+    if (!v) {
+      // ปิด tax invoice — reset
+      updateTax({ enabled: false, useSaved: false, name: '', address: '', taxId: '', email: '' });
+    } else {
+      updateTax({ enabled: true });
+    }
+  };
+
+  const toggleUseSaved = (v) => {
+    if (v && savedGuardian) {
+      updateTax({
+        useSaved: true,
+        name: savedGuardian.name || '',
+        address: savedGuardian.taxAddress || savedGuardian.contactAddress || '',
+        taxId: savedGuardian.taxId || '',
+        email: savedGuardian.email || '',
+      });
+    } else {
+      updateTax({ useSaved: false });
+    }
+  };
 
   const pay = () => {
     setProcessing(true);
@@ -2119,6 +2186,100 @@ function StepPayment({ data, next, prev }) {
             <p className="text-xs text-slate-500 mt-3">สแกน QR เพื่อชำระเงิน · รองรับทุกธนาคาร</p>
           </div>
         )}
+
+        {/* Tax invoice section */}
+        <div className="rounded-xl border-2 border-slate-200 overflow-hidden">
+          <label className={`flex items-start gap-3 p-3 cursor-pointer transition ${
+            taxInvoice.enabled ? 'bg-blue-50/40' : 'bg-slate-50/50 hover:bg-slate-50'
+          }`}>
+            <input
+              type="checkbox"
+              checked={taxInvoice.enabled}
+              onChange={e => toggleEnabled(e.target.checked)}
+              className="w-4 h-4 mt-0.5 accent-blue-600 cursor-pointer"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <FileIcon className="w-3.5 h-3.5 text-blue-600" strokeWidth={2} />
+                ออกใบกำกับภาษี
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                ติ๊กเพื่อกรอกข้อมูลสำหรับการออกใบกำกับภาษีตามกฎหมาย
+              </p>
+            </div>
+          </label>
+
+          {taxInvoice.enabled && (
+            <div className="border-t border-slate-200 p-3 space-y-3 bg-white">
+              {/* Use saved data checkbox */}
+              {savedGuardian && (
+                <label className={`flex items-start gap-3 p-2.5 rounded-lg border-2 cursor-pointer transition ${
+                  taxInvoice.useSaved ? 'border-red-300 bg-red-50/40' : 'border-slate-200 hover:border-slate-300'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={taxInvoice.useSaved}
+                    onChange={e => toggleUseSaved(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 accent-red-600 cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3 h-3 text-red-600" strokeWidth={2.5} />
+                      ใช้ข้อมูลที่บันทึกไว้
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      {savedGuardian.taxId ? `${savedGuardian.name} · เลขผู้เสียภาษี ${savedGuardian.taxId}` : `${savedGuardian.name}`}
+                    </p>
+                  </div>
+                </label>
+              )}
+
+              <div>
+                <Label required>ชื่อ-นามสกุล (หรือชื่อบริษัท)</Label>
+                <Input
+                  icon={User}
+                  placeholder="ชื่อบนใบกำกับภาษี"
+                  value={taxInvoice.name}
+                  onChange={e => updateTax({ name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label required>ที่อยู่สำหรับออกใบกำกับภาษี</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" strokeWidth={1.5} />
+                  <textarea
+                    rows={3}
+                    placeholder="ที่อยู่ที่จะปรากฏบนใบกำกับภาษี"
+                    value={taxInvoice.address}
+                    onChange={e => updateTax({ address: e.target.value })}
+                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-md border border-slate-200 bg-white placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200 outline-none transition resize-none"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label required>เลขประจำตัวผู้เสียภาษี</Label>
+                  <Input
+                    icon={Tag}
+                    placeholder="13 หลัก"
+                    value={taxInvoice.taxId}
+                    onChange={e => updateTax({ taxId: e.target.value.replace(/[^0-9]/g, '').slice(0, 13) })}
+                  />
+                </div>
+                <div>
+                  <Label required>อีเมล</Label>
+                  <Input
+                    icon={Mail}
+                    type="email"
+                    placeholder="สำหรับส่งใบกำกับภาษี"
+                    value={taxInvoice.email}
+                    onChange={e => updateTax({ email: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <p className="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-900" strokeWidth={1.5} />
@@ -2839,9 +3000,10 @@ function EventSelectModal({ open, onClose, events, onSelectEvent }) {
 // ============================================================
 // USER SIDEBAR — navigation ระหว่างหน้าของ user หลัง login
 // ============================================================
-function UserSidebar({ currentView, onNavigate, user, racersCount, regsCount }) {
+function UserSidebar({ currentView, onNavigate, user, racersCount, regsCount, hasGuardian }) {
   const items = [
-    { id: 'racers', label: 'นักแข่ง', icon: User, count: racersCount },
+    { id: 'racers', label: 'ข้อมูลนักแข่ง', icon: User, count: racersCount },
+    { id: 'guardian', label: 'ข้อมูลผู้ปกครอง', icon: ShieldCheck, count: hasGuardian ? '✓' : '!' },
     { id: 'history', label: 'ประวัติการลงทะเบียน', icon: FileIcon, count: regsCount },
   ];
   return (
@@ -2894,7 +3056,7 @@ function MyRacersPage({ racers, onAdd, onEdit, onDelete }) {
     <div>
       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">นักแข่งของฉัน</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">ข้อมูลนักแข่ง</h1>
           <p className="text-sm text-slate-500 mt-1">นักแข่งทั้งหมดที่บันทึกไว้ในระบบ · พร้อมใช้ลงทะเบียนการแข่งขัน</p>
         </div>
         <Button onClick={onAdd}>
@@ -2914,7 +3076,7 @@ function MyRacersPage({ racers, onAdd, onEdit, onDelete }) {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="space-y-3">
           {racers.map((r, idx) => {
             const country = COUNTRIES.find(c => c.code === r.country) || COUNTRIES[0];
             let age = null;
@@ -2926,81 +3088,88 @@ function MyRacersPage({ racers, onAdd, onEdit, onDelete }) {
               if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
             }
             return (
-              <div key={r.id} className="rounded-2xl border-2 border-slate-200 bg-white overflow-hidden hover:border-red-300 hover:shadow-lg transition-all group">
-                {/* Header: number badge + actions */}
-                <div className="px-4 py-3 bg-gradient-to-r from-slate-900 to-red-950 text-white flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 backdrop-blur-sm text-white text-xs font-black">
-                      #{idx + 1}
-                    </span>
-                    <span className="text-[10px] font-bold text-red-300 uppercase tracking-widest">นักแข่ง</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => onEdit(r)}
-                      className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition"
-                      title="แก้ไข"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => { if (confirm(`ลบ "${r.thFirstName} ${r.thLastName}"?`)) onDelete(r.id); }}
-                      className="p-1.5 rounded-md text-white/70 hover:text-red-300 hover:bg-red-500/20 transition"
-                      title="ลบ"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                {/* Body */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-black text-slate-900 truncate leading-tight">
-                        {r.thFirstName} {r.thLastName}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {r.enFirstName} {r.enLastName}
-                        {r.nickname && <span className="ml-1 text-slate-400">· {r.nickname}</span>}
-                      </p>
-                    </div>
-                    <span className="text-xl emoji-flag leading-none flex-shrink-0" title={country.name}>{country.flag}</span>
-                  </div>
-
-                  {/* meta tags */}
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
-                      {r.gender === 'male' || r.gender === 'M' ? '👦 ชาย' : r.gender === 'female' || r.gender === 'F' ? '👧 หญิง' : '—'}
-                    </span>
-                    {age !== null && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
-                        {age} ปี
+              <div key={r.id} className="rounded-2xl border-2 border-slate-200 bg-white overflow-hidden hover:border-red-300 hover:shadow-md transition-all">
+                <div className="flex flex-col sm:flex-row">
+                  {/* Left: number + flag — accent strip */}
+                  <div className="sm:w-48 bg-gradient-to-br from-slate-900 to-red-950 text-white p-4 flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-2">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/10 backdrop-blur-sm text-white text-sm font-black flex-shrink-0">
+                        #{idx + 1}
                       </span>
-                    )}
-                    {r.shirtSize && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold">
-                        ไซส์ {r.shirtSize}
-                      </span>
-                    )}
+                      <div className="sm:hidden flex-1 min-w-0">
+                        <p className="text-sm font-black truncate">{r.thFirstName} {r.thLastName}</p>
+                        <p className="text-[10px] text-red-300 truncate">{r.enFirstName} {r.enLastName}</p>
+                      </div>
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="text-[9px] font-bold text-red-300 uppercase tracking-widest leading-none mb-1">นักแข่ง</p>
+                      <p className="text-[10px] text-white/60 leading-none">บันทึกแล้ว</p>
+                    </div>
+                    <span className="text-2xl emoji-flag leading-none flex-shrink-0" title={country.name}>{country.flag}</span>
                   </div>
 
-                  {/* team */}
-                  {r.teamName && (
-                    <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-2">
-                      <Flag className="w-3 h-3" strokeWidth={2} />
-                      <span className="truncate">{r.teamName}</span>
-                    </div>
-                  )}
+                  {/* Right: info */}
+                  <div className="flex-1 p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="hidden sm:block text-lg font-black text-slate-900 leading-tight">
+                          {r.thFirstName} {r.thLastName}
+                          {r.nickname && <span className="text-slate-400 font-normal text-base ml-2">· {r.nickname}</span>}
+                        </p>
+                        <p className="hidden sm:block text-xs text-slate-500 mt-0.5">
+                          {r.enFirstName} {r.enLastName}
+                        </p>
+                        {/* meta line */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                            {r.gender === 'male' || r.gender === 'M' ? '👦 ชาย' : r.gender === 'female' || r.gender === 'F' ? '👧 หญิง' : '—'}
+                          </span>
+                          {age !== null && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                              {age} ปี
+                            </span>
+                          )}
+                          {r.shirtSize && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold">
+                              ไซส์ {r.shirtSize}
+                            </span>
+                          )}
+                          {r.teamName && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold max-w-[160px]">
+                              <Flag className="w-2.5 h-2.5 flex-shrink-0" strokeWidth={2.5} />
+                              <span className="truncate">{r.teamName}</span>
+                            </span>
+                          )}
+                          {r.isAnnualMember && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
+                              <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
+                              สมาชิกรายปี
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                  {/* annual member badge */}
-                  {r.isAnnualMember && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
-                      <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
-                      สมาชิกรายปี
-                    </span>
-                  )}
+                      {/* Actions */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => onEdit(r)}
+                          className="inline-flex items-center gap-1 px-2.5 h-8 rounded-md border border-slate-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700 text-xs font-semibold text-slate-700 transition"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                          </svg>
+                          แก้ไข
+                        </button>
+                        <button
+                          onClick={() => { if (confirm(`ลบ "${r.thFirstName} ${r.thLastName}"?`)) onDelete(r.id); }}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 text-slate-500 transition"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -3233,6 +3402,180 @@ function AnnualMemberVerifyModal({ open, onClose, onVerified }) {
         <p className="text-[10px] text-slate-400 text-center">💡 Demo: ทุก identifier จะผ่านการตรวจสอบ</p>
       </div>
     </Modal>
+  );
+}
+
+// ============================================================
+// GUARDIAN PAGE — ข้อมูลผู้ปกครอง (จัดการได้ในที่เดียว)
+// ============================================================
+function GuardianPage({ guardian, onSave }) {
+  const [editing, setEditing] = useState(!guardian);
+  const [form, setForm] = useState(guardian || {
+    name: '', contactAddress: '', taxAddress: '', taxId: '', phone: '', email: '',
+  });
+  const [err, setErr] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
+
+  useEffect(() => {
+    setForm(guardian || { name: '', contactAddress: '', taxAddress: '', taxId: '', phone: '', email: '' });
+  }, [guardian]);
+
+  const update = (patch) => setForm({ ...form, ...patch });
+
+  const submit = () => {
+    if (!form.name || !form.contactAddress || !form.phone || !form.email) {
+      return setErr('กรุณากรอกข้อมูลที่จำเป็นให้ครบ (ชื่อ, ที่อยู่ติดต่อ, เบอร์, อีเมล)');
+    }
+    setErr('');
+    onSave(form);
+    setEditing(false);
+    setSavedMsg('บันทึกข้อมูลผู้ปกครองเรียบร้อยแล้ว');
+    setTimeout(() => setSavedMsg(''), 3000);
+  };
+
+  const copyContactToTax = () => {
+    update({ taxAddress: form.contactAddress });
+  };
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">ข้อมูลผู้ปกครอง</h1>
+          <p className="text-sm text-slate-500 mt-1">บันทึกข้อมูลผู้ปกครองเพื่อนำมาใช้ลงทะเบียนได้รวดเร็ว</p>
+        </div>
+        {!editing && guardian && (
+          <Button variant="secondary" onClick={() => setEditing(true)}>
+            แก้ไขข้อมูล
+          </Button>
+        )}
+      </div>
+
+      {savedMsg && (
+        <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 flex items-center gap-2">
+          <Check className="w-4 h-4 text-green-600" strokeWidth={2.5} />
+          <p className="text-sm font-medium text-green-800">{savedMsg}</p>
+        </div>
+      )}
+
+      {!editing && guardian ? (
+        // VIEW MODE
+        <div className="rounded-2xl border-2 border-slate-200 bg-white overflow-hidden">
+          <div className="px-5 py-4 bg-gradient-to-r from-slate-900 to-red-950 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-base font-black">
+                {guardian.name.charAt(0)}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-red-300 uppercase tracking-widest leading-none">ผู้ปกครอง</p>
+                <p className="text-lg font-black tracking-tight">{guardian.name}</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-5 space-y-4">
+            <InfoRow label="ที่อยู่ที่ติดต่อได้" value={guardian.contactAddress} icon={MapPin} />
+            <InfoRow label="ที่อยู่สำหรับออกใบกำกับภาษี" value={guardian.taxAddress || '—'} icon={FileIcon} />
+            <InfoRow label="เลขประจำตัวผู้เสียภาษี" value={guardian.taxId ? <span className="font-mono">{guardian.taxId}</span> : '—'} icon={Tag} />
+            <InfoRow label="เบอร์โทรศัพท์" value={guardian.phone} icon={Phone} />
+            <InfoRow label="อีเมล" value={guardian.email} icon={Mail} />
+          </div>
+        </div>
+      ) : (
+        // EDIT MODE
+        <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 space-y-4">
+          <div>
+            <Label required>ชื่อ-นามสกุล</Label>
+            <Input
+              icon={User}
+              placeholder="สมชาย ใจดี"
+              value={form.name}
+              onChange={e => update({ name: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label required>ที่อยู่ที่ติดต่อได้</Label>
+            <textarea
+              placeholder="บ้านเลขที่, หมู่, ถนน, ตำบล, อำเภอ, จังหวัด, ไปรษณีย์"
+              value={form.contactAddress}
+              onChange={e => update({ contactAddress: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 focus:border-slate-900 focus:ring-2 focus:ring-slate-200 outline-none transition resize-none"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <Label className="!mb-0">ที่อยู่สำหรับออกใบกำกับภาษี</Label>
+              {form.contactAddress && (
+                <button
+                  type="button"
+                  onClick={copyContactToTax}
+                  className="text-[11px] text-red-600 hover:text-red-700 font-medium hover:underline"
+                >
+                  คัดลอกจากที่อยู่ติดต่อ
+                </button>
+              )}
+            </div>
+            <textarea
+              placeholder="กรอกที่อยู่สำหรับใบกำกับภาษี (ถ้าเหมือนที่อยู่ติดต่อให้กดคัดลอก)"
+              value={form.taxAddress}
+              onChange={e => update({ taxAddress: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 focus:border-slate-900 focus:ring-2 focus:ring-slate-200 outline-none transition resize-none"
+            />
+          </div>
+          <div>
+            <Label>เลขประจำตัวผู้เสียภาษี</Label>
+            <Input
+              icon={Tag}
+              placeholder="13 หลัก เช่น 1234567890123"
+              value={form.taxId}
+              onChange={e => update({ taxId: e.target.value.replace(/[^0-9]/g, '').slice(0, 13) })}
+            />
+            <p className="text-[10px] text-slate-400 mt-1">ใส่เลข 13 หลัก (สำหรับออกใบกำกับภาษีเท่านั้น)</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label required>เบอร์โทรศัพท์</Label>
+              <Input icon={Phone} placeholder="08X-XXX-XXXX" value={form.phone} onChange={e => update({ phone: e.target.value })} />
+            </div>
+            <div>
+              <Label required>อีเมล</Label>
+              <Input icon={Mail} type="email" placeholder="email@example.com" value={form.email} onChange={e => update({ email: e.target.value })} />
+            </div>
+          </div>
+
+          {err && <Alert>{err}</Alert>}
+
+          <div className="flex gap-2 pt-2">
+            {guardian && (
+              <Button variant="secondary" onClick={() => { setEditing(false); setErr(''); setForm(guardian); }} className="flex-1">
+                ยกเลิก
+              </Button>
+            )}
+            <Button onClick={submit} className="flex-1">
+              <Check className="w-4 h-4" /> บันทึก
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// helper row component
+function InfoRow({ label, value, icon: Icon }) {
+  return (
+    <div className="flex gap-3">
+      {Icon && (
+        <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+          <Icon className="w-4 h-4 text-red-600" strokeWidth={2} />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none">{label}</p>
+        <p className="text-sm text-slate-900 mt-1 leading-relaxed">{value}</p>
+      </div>
+    </div>
   );
 }
 
@@ -4530,6 +4873,7 @@ function App() {
   const [registrations, setRegistrations] = useState([]);
   const [savedRacers, setSavedRacers] = useState([]); // นักแข่งที่เซฟไว้ใน profile ของ user
   const [racerEditor, setRacerEditor] = useState({ open: false, racer: null }); // เปิด/ปิด modal เพิ่ม-แก้ไขนักแข่ง
+  const [savedGuardian, setSavedGuardian] = useState(null); // ข้อมูลผู้ปกครองที่บันทึกไว้
   const [checkIns, setCheckIns] = useState([]);
   const [qrModal, setQrModal] = useState({ open: false, registration: null, racer: null });
   const [eventSelectOpen, setEventSelectOpen] = useState(false);
@@ -4673,6 +5017,15 @@ function App() {
         });
       });
       setSavedRacers(Array.from(uniqueRacers.values()));
+      // mock guardian data
+      setSavedGuardian({
+        name: 'สมชาย จันทร์เพ็ญ',
+        contactAddress: '123/45 หมู่ 6 ถ.สุขุมวิท แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพฯ 10110',
+        taxAddress: '123/45 หมู่ 6 ถ.สุขุมวิท แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพฯ 10110',
+        taxId: '1234567890123',
+        phone: '081-234-5678',
+        email: userData.email || 'somchai@example.com',
+      });
     }
     setView('racers'); // เปลี่ยน default landing หลัง login → หน้า "นักแข่ง"
   };
@@ -4807,12 +5160,13 @@ function App() {
                     prefillUser={user}
                     selectedEvent={selectedEvent}
                     savedRacers={savedRacers}
+                    savedGuardian={savedGuardian}
                   />
                 </div>
               </div>
             )}
 
-            {(view === 'history' || view === 'racers') && user && (
+            {(view === 'history' || view === 'racers' || view === 'guardian') && user && (
               <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5 lg:gap-6">
                   <div className="lg:sticky lg:top-24 lg:self-start">
@@ -4822,6 +5176,7 @@ function App() {
                       user={user}
                       racersCount={savedRacers.length}
                       regsCount={registrations.length}
+                      hasGuardian={!!savedGuardian}
                     />
                   </div>
                   <div className="min-w-0">
@@ -4831,6 +5186,12 @@ function App() {
                         onAdd={() => setRacerEditor({ open: true, racer: null })}
                         onEdit={(r) => setRacerEditor({ open: true, racer: r })}
                         onDelete={handleDeleteRacer}
+                      />
+                    )}
+                    {view === 'guardian' && (
+                      <GuardianPage
+                        guardian={savedGuardian}
+                        onSave={setSavedGuardian}
                       />
                     )}
                     {view === 'history' && (
@@ -4891,7 +5252,7 @@ function App() {
 // ============================================================
 // MAIN APP (multi-step registration flow)
 // ============================================================
-function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent, savedRacers = [] }) {
+function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent, savedRacers = [], savedGuardian = null }) {
   const [step, setStep] = useState(startStep);
   const [data, setData] = useState({
     username: prefillUser?.username || '',
@@ -4963,9 +5324,9 @@ function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser
 
       {step === 1 && <StepAccount data={data} setData={setData} next={next} />}
       {step === 2 && <StepRacers racers={racers} setRacers={setRacers} savedRacers={savedRacers} next={next} prev={step > startStep ? prev : null} />}
-      {step === 3 && <StepGuardian data={data} setData={setData} next={next} prev={prev} />}
+      {step === 3 && <StepGuardian data={data} setData={setData} next={next} prev={prev} savedGuardian={savedGuardian} />}
       {step === 4 && <StepSummary racers={racers} data={data} setData={setData} next={next} prev={prev} />}
-      {step === 5 && <StepPayment data={data} next={next} prev={prev} />}
+      {step === 5 && <StepPayment data={data} setData={setData} next={next} prev={prev} savedGuardian={savedGuardian} />}
       {step === 6 && <StepSuccess racers={racers} data={data} reset={reset} onBackToHome={onBackToHome} />}
     </div>
   );

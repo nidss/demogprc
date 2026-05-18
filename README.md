@@ -45,10 +45,9 @@ demogprc/
 ├── app.jsx          — React app code (JSX, ~73KB)
 └── assets/
     ├── hero.png     — Hero banner
-    ├── logo.png     — Logo GPRC
+    ├── grandprix-logo.png     — Logo GPRC
     ├── bg.jpg       — Background image
-    ├── mascot-left.jpg
-    └── mascot-right.jpg
+    └── success.png
 ```
 
 ## 🚀 Local Development

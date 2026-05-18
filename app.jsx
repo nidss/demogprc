@@ -2654,26 +2654,90 @@ function AdminNavbar({ adminView, onNavigate, admin, onLogout }) {
 // ADMIN — DASHBOARD
 // ============================================================
 function AdminDashboard({ registrations, checkIns, onNavigate }) {
-  const totalRegs = registrations.length;
-  const totalRacers = registrations.reduce((s, r) => s + r.racers.length, 0);
-  const totalRevenue = registrations.reduce((s, r) => s + (r.total || 0), 0);
-  const checkInCount = checkIns.length;
+  const [selectedEventId, setSelectedEventId] = useState('all'); // 'all' | event.id
+  const [detailReg, setDetailReg] = useState(null); // registration ที่กำลังดู detail
+
+  // กรอง registrations ตาม event ที่เลือก
+  const filteredRegs = useMemo(() => {
+    if (selectedEventId === 'all') return registrations;
+    return registrations.filter(r => r.eventId === selectedEventId);
+  }, [registrations, selectedEventId]);
+
+  const filteredCheckIns = useMemo(() => {
+    if (selectedEventId === 'all') return checkIns;
+    return checkIns.filter(c => c.eventId === selectedEventId);
+  }, [checkIns, selectedEventId]);
+
+  // KPIs (ใช้ filtered data)
+  const totalRegs = filteredRegs.length;
+  const totalRacers = filteredRegs.reduce((s, r) => s + r.racers.length, 0);
+  const totalRevenue = filteredRegs.reduce((s, r) => s + (r.total || 0), 0);
+  const checkInCount = filteredCheckIns.length;
   const checkInRate = totalRacers > 0 ? Math.round((checkInCount / totalRacers) * 100) : 0;
 
+  // Event stats สำหรับ sidebar (เสมอใช้ all data)
   const eventStats = EVENTS.map(evt => {
     const regsForEvent = registrations.filter(r => r.eventId === evt.id);
     const racersForEvent = regsForEvent.reduce((s, r) => s + r.racers.length, 0);
-    return { ...evt, regsCount: regsForEvent.length, racersCount: racersForEvent };
+    const checkInsForEvent = checkIns.filter(c => c.eventId === evt.id).length;
+    return { ...evt, regsCount: regsForEvent.length, racersCount: racersForEvent, checkInsCount: checkInsForEvent };
   });
+
+  const currentEvent = EVENTS.find(e => e.id === selectedEventId);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="mb-6">
+      <div className="mb-5">
         <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">ภาพรวมระบบ</p>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
         <p className="text-sm text-slate-500 mt-1">สรุปข้อมูลการลงทะเบียน · อัปเดตเรียลไทม์</p>
       </div>
 
+      {/* Event tabs */}
+      <div className="mb-5 -mx-1 px-1 overflow-x-auto">
+        <div className="flex gap-2 min-w-max">
+          <EventTab
+            active={selectedEventId === 'all'}
+            onClick={() => setSelectedEventId('all')}
+            label="All Events"
+            sublabel={`${registrations.length} รายการ`}
+            count={registrations.reduce((s, r) => s + r.racers.length, 0)}
+          />
+          {eventStats.map(evt => (
+            <EventTab
+              key={evt.id}
+              active={selectedEventId === evt.id}
+              onClick={() => setSelectedEventId(evt.id)}
+              label={evt.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
+              sublabel={`${evt.regsCount} รายการ`}
+              count={evt.racersCount}
+              isFeatured={evt.id === 'evt2'}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Event header banner เฉพาะตอนเลือก event ใดอันหนึ่ง */}
+      {currentEvent && (
+        <div className="mb-5 rounded-2xl overflow-hidden bg-gradient-to-r from-slate-900 to-red-950 text-white relative shadow-md">
+          <div className="absolute -top-8 -right-8 w-32 h-32 bg-red-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex items-center gap-4 p-4 sm:p-5 relative">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-white/20 flex-shrink-0 bg-slate-800">
+              <img src={currentEvent.coverImage} alt="" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-red-300 uppercase tracking-widest leading-none mb-1.5">{currentEvent.subtitle}</p>
+              <h2 className="text-lg sm:text-xl font-black tracking-tight leading-tight truncate">{currentEvent.title}</h2>
+              <p className="text-xs text-white/60 mt-1 flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" />{currentEvent.dateRange}</span>
+                <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{currentEvent.venue}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <KpiCard label="การลงทะเบียน" value={totalRegs} unit="รายการ" icon={Tag} trend="+12%" color="from-blue-500 to-blue-700" />
         <KpiCard label="จำนวนนักแข่ง" value={totalRacers} unit="คน" icon={User} trend="+8%" color="from-red-500 to-red-700" />
@@ -2682,19 +2746,31 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Registration table */}
         <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900">การลงทะเบียนล่าสุด</h2>
+            <h2 className="text-sm font-bold text-slate-900">
+              การลงทะเบียน
+              {selectedEventId !== 'all' && currentEvent && (
+                <span className="ml-2 text-xs text-slate-500 font-normal">— {currentEvent.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}</span>
+              )}
+            </h2>
             <span className="text-[10px] text-slate-400">{totalRegs} รายการ</span>
           </div>
-          {registrations.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีการลงทะเบียน</div>
+          {filteredRegs.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีการลงทะเบียนใน event นี้</div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {registrations.slice(0, 6).map((reg, i) => {
+              {filteredRegs.slice(0, 8).map((reg, i) => {
                 const ev = EVENTS.find(e => e.id === reg.eventId);
+                const regCheckIns = checkIns.filter(c => c.refId === reg.refId).length;
+                const checkInPct = reg.racers.length > 0 ? Math.round((regCheckIns / reg.racers.length) * 100) : 0;
                 return (
-                  <div key={reg.id} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50/50 transition">
+                  <button
+                    key={reg.id}
+                    onClick={() => setDetailReg(reg)}
+                    className="w-full px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition group text-left"
+                  >
                     <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm flex-shrink-0">
                       {i + 1}
                     </span>
@@ -2706,17 +2782,29 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                             {ev.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
                           </span>
                         )}
+                        {regCheckIns > 0 && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-50 border border-green-100 text-green-700 text-[9px] font-bold">
+                            <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                            {regCheckIns}/{reg.racers.length} เช็คอิน
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-slate-500 truncate">{reg.racers.length} นักแข่ง · {reg.totalItems} รายการ · {reg.date}</p>
                     </div>
-                    <span className="text-sm font-black text-red-600 flex-shrink-0">{fmt(reg.total)} ฿</span>
-                  </div>
+                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                      <span className="text-sm font-black text-red-600">{fmt(reg.total)} ฿</span>
+                      <span className="text-[10px] text-slate-400 group-hover:text-red-600 inline-flex items-center gap-0.5 transition">
+                        ดูรายละเอียด <ArrowRight className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100">
@@ -2725,17 +2813,25 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
             <div className="p-4 space-y-3">
               {eventStats.map(evt => {
                 const pct = Math.round((evt.racersCount / evt.capacity) * 100);
+                const checkInPct = evt.racersCount > 0 ? Math.round((evt.checkInsCount / evt.racersCount) * 100) : 0;
+                const isActive = selectedEventId === evt.id;
                 return (
-                  <div key={evt.id}>
+                  <button
+                    key={evt.id}
+                    onClick={() => setSelectedEventId(isActive ? 'all' : evt.id)}
+                    className={`w-full text-left rounded-lg p-2 -m-2 transition ${isActive ? 'bg-red-50' : 'hover:bg-slate-50'}`}
+                  >
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-bold text-slate-900 truncate flex-1">{evt.title}</p>
+                      <p className={`text-xs font-bold truncate flex-1 ${isActive ? 'text-red-700' : 'text-slate-900'}`}>{evt.title}</p>
                       <span className="text-xs font-mono font-bold text-slate-900 ml-2">{evt.racersCount}/{evt.capacity}</span>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">{evt.regsCount} การลงทะเบียน · เต็ม {pct}%</p>
-                  </div>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      {evt.regsCount} การลงทะเบียน · เช็คอิน {evt.checkInsCount}/{evt.racersCount} ({checkInPct}%)
+                    </p>
+                  </button>
                 );
               })}
             </div>
@@ -2758,7 +2854,195 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
           </button>
         </div>
       </div>
+
+      {/* Detail modal */}
+      <RegistrationDetailModal
+        open={!!detailReg}
+        onClose={() => setDetailReg(null)}
+        registration={detailReg}
+        checkIns={checkIns}
+      />
     </div>
+  );
+}
+
+// EventTab pill — เลือก event ใน Dashboard
+function EventTab({ active, onClick, label, sublabel, count, isFeatured }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all whitespace-nowrap ${
+        active
+          ? 'bg-gradient-to-r from-red-600 to-red-700 border-red-700 text-white shadow-md shadow-red-600/30'
+          : 'bg-white border-slate-200 text-slate-700 hover:border-red-200 hover:shadow-sm'
+      }`}
+    >
+      <div className="text-left">
+        <p className={`text-xs font-bold leading-none ${active ? 'text-white' : 'text-slate-900'}`}>{label}</p>
+        <p className={`text-[10px] mt-0.5 leading-none ${active ? 'text-red-100' : 'text-slate-500'}`}>{sublabel}</p>
+      </div>
+      <span className={`inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md text-[11px] font-black ${
+        active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-900'
+      }`}>
+        {count}
+      </span>
+      {isFeatured && !active && (
+        <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
+      )}
+    </button>
+  );
+}
+
+// Registration detail modal — แสดงข้อมูลครบของการลงทะเบียน
+function RegistrationDetailModal({ open, onClose, registration, checkIns }) {
+  if (!registration) return null;
+  const ev = EVENTS.find(e => e.id === registration.eventId);
+  const regCheckIns = checkIns.filter(c => c.refId === registration.refId);
+
+  return (
+    <Modal open={open} onClose={onClose} title="รายละเอียดการลงทะเบียน">
+      <div className="space-y-4">
+        {/* Header: ref + event + total */}
+        <div className="rounded-xl bg-gradient-to-br from-slate-900 to-red-950 text-white p-4 relative overflow-hidden">
+          <div className="absolute -top-6 -right-6 w-24 h-24 bg-red-500/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[10px] font-bold text-red-300 uppercase tracking-widest leading-none">เลขอ้างอิง</p>
+                <p className="font-mono text-lg font-black tracking-wider mt-0.5">{registration.refId}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-red-300 uppercase tracking-widest leading-none">ยอดชำระ</p>
+                <p className="text-xl font-black tracking-tight mt-0.5">{fmt(registration.total)} <span className="text-xs font-normal">฿</span></p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-white/10 flex-wrap">
+              {ev && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 text-white text-[10px] font-bold">
+                  <Flag className="w-2.5 h-2.5" strokeWidth={2.5} />
+                  {ev.title}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 text-white/80 text-[10px]">
+                <Calendar className="w-2.5 h-2.5" strokeWidth={2} />
+                ลงทะเบียน {registration.date}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-slate-200 p-3 text-center">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide leading-none">นักแข่ง</p>
+            <p className="text-xl font-black text-slate-900 mt-1 leading-none">{registration.racers.length}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 p-3 text-center">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide leading-none">รายการ</p>
+            <p className="text-xl font-black text-slate-900 mt-1 leading-none">{registration.totalItems}</p>
+          </div>
+          <div className={`rounded-lg border-2 p-3 text-center ${regCheckIns.length > 0 ? 'border-green-300 bg-green-50' : 'border-slate-200'}`}>
+            <p className={`text-[9px] font-bold uppercase tracking-wide leading-none ${regCheckIns.length > 0 ? 'text-green-700' : 'text-slate-500'}`}>เช็คอิน</p>
+            <p className={`text-xl font-black mt-1 leading-none ${regCheckIns.length > 0 ? 'text-green-700' : 'text-slate-400'}`}>
+              {regCheckIns.length}/{registration.racers.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Racers list — แสดงข้อมูลครบของแต่ละคน */}
+        <div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <User className="w-3.5 h-3.5" strokeWidth={2} />
+            รายชื่อนักแข่ง ({registration.racers.length})
+          </p>
+          <div className="space-y-2">
+            {registration.racers.map((racer, ri) => {
+              const checkedIn = regCheckIns.some(c => c.racerId === racer.id);
+              const checkInRecord = regCheckIns.find(c => c.racerId === racer.id);
+
+              // คำนวณอายุ
+              let age = null;
+              if (racer.birthDate) {
+                const birth = new Date(racer.birthDate);
+                const now = new Date();
+                age = now.getFullYear() - birth.getFullYear();
+                const m = now.getMonth() - birth.getMonth();
+                if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+              }
+
+              // กรุ๊ป tiers + dates
+              const items = [];
+              for (const did of racer.selectedDates || []) {
+                const dateObj = RACE_DATES.find(d => d.id === did);
+                for (const tid of (racer.selectedRaces?.[did] || [])) {
+                  const t = RACE_TIERS.find(x => x.id === tid);
+                  if (dateObj && t) items.push({ date: dateObj, tier: t });
+                }
+              }
+
+              return (
+                <div key={ri} className="rounded-xl border-2 border-slate-200 bg-white overflow-hidden">
+                  <div className="px-3 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-[10px] font-black shadow-sm shadow-red-500/30 flex-shrink-0">
+                        #{ri + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate leading-tight">
+                          {racer.thFirstName} {racer.thLastName}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate leading-tight">
+                          {racer.enFirstName} {racer.enLastName}
+                        </p>
+                      </div>
+                    </div>
+                    {checkedIn ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold">
+                        <Check className="w-3 h-3" strokeWidth={3} />
+                        เช็คอิน {checkInRecord?.time}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                        รอเช็คอิน
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    {/* meta */}
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-2 flex-wrap">
+                      <span>{racer.gender === 'M' ? '👦 ชาย' : racer.gender === 'F' ? '👧 หญิง' : '—'}</span>
+                      {age !== null && (<><span className="text-slate-300">·</span><span>{age} ปี</span></>)}
+                      <span className="text-slate-300">·</span>
+                      <span>{items.length} รายการแข่ง</span>
+                    </div>
+                    {/* race items table */}
+                    {items.length > 0 && (
+                      <div className="rounded-lg bg-slate-50 divide-y divide-white">
+                        {items.map((item, i) => (
+                          <div key={i} className="flex items-center gap-2 px-2.5 py-2">
+                            <div className="flex-shrink-0 w-9 h-9 rounded-md bg-white border border-red-200 flex flex-col items-center justify-center">
+                              <span className="text-[8px] font-bold text-red-600 leading-none">{item.date.short?.split(' ')[1] || 'มิ.ย.'}</span>
+                              <span className="text-sm font-black text-red-700 leading-none">{item.date.short?.split(' ')[0] || ''}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-slate-900 truncate">รุ่น {item.tier.label}</p>
+                              <p className="text-[10px] text-slate-500 truncate">{item.date.day}</p>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-900 font-mono flex-shrink-0">{fmt(item.tier.price || 0)} ฿</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <Button onClick={onClose} variant="secondary" className="w-full">ปิด</Button>
+      </div>
+    </Modal>
   );
 }
 

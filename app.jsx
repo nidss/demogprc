@@ -1685,7 +1685,7 @@ function StepSuccess({ racers, data, reset, onBackToHome }) {
 // ============================================================
 // NAVBAR — floating transparent style
 // ============================================================
-function Navbar({ currentView, onNavigate, user, onLogin, onLogout, transparent }) {
+function Navbar({ currentView, onNavigate, user, onLogin, onLogout, transparent, onAdminLogin }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -1823,6 +1823,17 @@ function Navbar({ currentView, onNavigate, user, onLogin, onLogout, transparent 
             >
               เข้าสู่ระบบ
             </button>
+          )}
+          {onAdminLogin && (
+            <div className="pt-2 mt-2 border-t border-white/10">
+              <button
+                onClick={() => { onAdminLogin(); setMobileOpen(false); }}
+                className="w-full text-left px-3 py-2.5 text-xs font-medium text-white/50 rounded-md hover:bg-white/5 hover:text-red-400 transition inline-flex items-center gap-2"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.75} />
+                Admin Console
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -2526,15 +2537,502 @@ function QRModal({ open, onClose, registration, racer }) {
 }
 
 // ============================================================
+// ADMIN — LOGIN MODAL
+// ============================================================
+function AdminLoginModal({ open, onClose, onLogin }) {
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [err, setErr] = useState('');
+
+  useEffect(() => { if (open) { setForm({ username: '', password: '' }); setErr(''); } }, [open]);
+
+  const submit = () => {
+    if (!form.username || !form.password) return setErr('กรุณากรอกข้อมูลให้ครบ');
+    onLogin({ username: form.username, role: 'admin' });
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="เข้าสู่ระบบผู้ดูแล">
+      <div className="space-y-3">
+        <div className="rounded-lg bg-slate-900 text-white p-3 flex items-center gap-2 mb-1">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
+            <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2} />
+          </div>
+          <div className="text-xs">
+            <p className="font-bold">Admin Console</p>
+            <p className="text-white/60">สำหรับเจ้าหน้าที่ดูแลระบบเท่านั้น</p>
+          </div>
+        </div>
+        <div>
+          <Label required>ชื่อผู้ใช้</Label>
+          <Input icon={User} placeholder="admin" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
+        </div>
+        <div>
+          <Label required>รหัสผ่าน</Label>
+          <Input icon={Lock} type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+        </div>
+        {err && <Alert>{err}</Alert>}
+        <Button onClick={submit} className="w-full">
+          เข้าสู่ระบบ <ArrowRight className="w-4 h-4" />
+        </Button>
+        <p className="text-[11px] text-slate-400 text-center">💡 Demo: ใส่อะไรก็เข้าได้</p>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================
+// ADMIN — NAVBAR
+// ============================================================
+function AdminNavbar({ adminView, onNavigate, admin, onLogout }) {
+  const items = [
+    { id: 'admin-dashboard', label: 'Dashboard', icon: Tag },
+    { id: 'admin-checkin', label: 'Check-in หน้างาน', icon: Flag },
+  ];
+  return (
+    <nav className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <img src={GRANDPRIX_LOGO} alt="Grandprix" className="h-8 w-auto" />
+            <div className="hidden sm:flex flex-col leading-none">
+              <span className="text-xs text-white/50">Admin Console</span>
+              <span className="text-sm font-bold">Runbike 2026</span>
+            </div>
+          </div>
+          <div className="hidden md:flex items-center gap-1">
+            {items.map(it => {
+              const Icon = it.icon;
+              return (
+                <button
+                  key={it.id}
+                  onClick={() => onNavigate(it.id)}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition inline-flex items-center gap-1.5 ${
+                    adminView === it.id ? 'bg-red-600 text-white' : 'text-white/70 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" strokeWidth={1.75} />
+                  {it.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-full bg-white/5 border border-white/10">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-bold flex items-center justify-center">
+              {(admin?.username || 'A')[0].toUpperCase()}
+            </div>
+            <span className="text-xs font-medium text-white max-w-[100px] truncate">{admin?.username}</span>
+            <span className="text-[9px] font-bold text-red-300 uppercase tracking-wider bg-red-500/20 px-1.5 py-0.5 rounded">ADMIN</span>
+          </div>
+          <button onClick={onLogout} className="px-3 h-9 text-sm font-medium text-white/70 hover:text-white transition">ออกจากระบบ</button>
+        </div>
+      </div>
+      <div className="md:hidden border-t border-slate-800 flex">
+        {items.map(it => {
+          const Icon = it.icon;
+          return (
+            <button
+              key={it.id}
+              onClick={() => onNavigate(it.id)}
+              className={`flex-1 py-3 text-xs font-medium inline-flex items-center justify-center gap-1.5 ${
+                adminView === it.id ? 'text-white border-b-2 border-red-500' : 'text-white/60'
+              }`}
+            >
+              <Icon className="w-4 h-4" strokeWidth={1.75} />
+              {it.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+// ============================================================
+// ADMIN — DASHBOARD
+// ============================================================
+function AdminDashboard({ registrations, checkIns, onNavigate }) {
+  const totalRegs = registrations.length;
+  const totalRacers = registrations.reduce((s, r) => s + r.racers.length, 0);
+  const totalRevenue = registrations.reduce((s, r) => s + (r.total || 0), 0);
+  const checkInCount = checkIns.length;
+  const checkInRate = totalRacers > 0 ? Math.round((checkInCount / totalRacers) * 100) : 0;
+
+  const eventStats = EVENTS.map(evt => {
+    const regsForEvent = registrations.filter(r => r.eventId === evt.id);
+    const racersForEvent = regsForEvent.reduce((s, r) => s + r.racers.length, 0);
+    return { ...evt, regsCount: regsForEvent.length, racersCount: racersForEvent };
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6">
+        <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">ภาพรวมระบบ</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
+        <p className="text-sm text-slate-500 mt-1">สรุปข้อมูลการลงทะเบียน · อัปเดตเรียลไทม์</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <KpiCard label="การลงทะเบียน" value={totalRegs} unit="รายการ" icon={Tag} trend="+12%" color="from-blue-500 to-blue-700" />
+        <KpiCard label="จำนวนนักแข่ง" value={totalRacers} unit="คน" icon={User} trend="+8%" color="from-red-500 to-red-700" />
+        <KpiCard label="รายได้รวม" value={fmt(totalRevenue)} unit="บาท" icon={CreditCard} trend="+15%" color="from-green-500 to-green-700" />
+        <KpiCard label="เช็คอินแล้ว" value={checkInCount} unit={`${checkInRate}%`} icon={Check} trend={`${checkInRate}%`} color="from-amber-500 to-amber-700" trendIsRate />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900">การลงทะเบียนล่าสุด</h2>
+            <span className="text-[10px] text-slate-400">{totalRegs} รายการ</span>
+          </div>
+          {registrations.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีการลงทะเบียน</div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {registrations.slice(0, 6).map((reg, i) => {
+                const ev = EVENTS.find(e => e.id === reg.eventId);
+                return (
+                  <div key={reg.id} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50/50 transition">
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-slate-900 font-mono">{reg.refId}</p>
+                        {ev && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[9px] font-bold uppercase tracking-wider">
+                            {ev.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate">{reg.racers.length} นักแข่ง · {reg.totalItems} รายการ · {reg.date}</p>
+                    </div>
+                    <span className="text-sm font-black text-red-600 flex-shrink-0">{fmt(reg.total)} ฿</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900">แยกตาม Event</h2>
+            </div>
+            <div className="p-4 space-y-3">
+              {eventStats.map(evt => {
+                const pct = Math.round((evt.racersCount / evt.capacity) * 100);
+                return (
+                  <div key={evt.id}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-xs font-bold text-slate-900 truncate flex-1">{evt.title}</p>
+                      <span className="text-xs font-mono font-bold text-slate-900 ml-2">{evt.racersCount}/{evt.capacity}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">{evt.regsCount} การลงทะเบียน · เต็ม {pct}%</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            onClick={() => onNavigate('admin-checkin')}
+            className="w-full rounded-2xl p-5 bg-gradient-to-br from-slate-900 to-red-950 text-white text-left hover:shadow-xl transition-all group overflow-hidden relative"
+          >
+            <div className="absolute -top-4 -right-4 w-24 h-24 bg-red-500/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="relative">
+              <Flag className="w-6 h-6 text-red-300 mb-2" strokeWidth={2} />
+              <p className="text-xs font-bold text-red-300 uppercase tracking-widest mb-1">เริ่มงาน</p>
+              <p className="text-lg font-black tracking-tight mb-1">Check-in หน้างาน</p>
+              <p className="text-xs text-white/60">สแกน QR Code เพื่อบันทึกการเข้าร่วม</p>
+              <p className="inline-flex items-center gap-1 text-xs font-bold text-white mt-3 group-hover:gap-2 transition-all">
+                ไปยังหน้า Check-in <ArrowRight className="w-3.5 h-3.5" />
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, unit, icon: Icon, trend, color, trendIsRate }) {
+  return (
+    <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-md`}>
+          <Icon className="w-5 h-5 text-white" strokeWidth={2} />
+        </div>
+        {trend && (
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+            trendIsRate ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
+          }`}>
+            {trend}
+          </span>
+        )}
+      </div>
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">{value}</p>
+      <p className="text-[10px] text-slate-500 mt-1">{unit}</p>
+    </div>
+  );
+}
+
+// ============================================================
+// ADMIN — CHECK-IN PAGE
+// ============================================================
+function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
+  const [scanInput, setScanInput] = useState('');
+  const [foundRacer, setFoundRacer] = useState(null);
+  const [error, setError] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
+
+  useEffect(() => { setRecentCheckIns(checkIns); }, [checkIns]);
+
+  const handleScan = (input) => {
+    const q = (input || scanInput).trim();
+    if (!q) { setError('กรุณาสแกน QR หรือใส่เลขอ้างอิง'); setFoundRacer(null); return; }
+    setError('');
+    setScanning(true);
+
+    setTimeout(() => {
+      let found = null;
+      for (const reg of registrations) {
+        if (reg.refId.toLowerCase() === q.toLowerCase()) {
+          found = { reg, racer: reg.racers[0] };
+          break;
+        }
+        const racer = reg.racers.find(r =>
+          (r.thFirstName + ' ' + r.thLastName).includes(q) ||
+          (r.enFirstName + ' ' + r.enLastName).toLowerCase().includes(q.toLowerCase()) ||
+          String(r.id) === q
+        );
+        if (racer) { found = { reg, racer }; break; }
+      }
+      setScanning(false);
+      if (found) {
+        const alreadyCheckedIn = recentCheckIns.some(c => c.refId === found.reg.refId && c.racerId === found.racer.id);
+        setFoundRacer({ ...found, alreadyCheckedIn });
+        setError('');
+      } else {
+        setFoundRacer(null);
+        setError('ไม่พบข้อมูลในระบบ — ตรวจสอบเลขอ้างอิงหรือชื่ออีกครั้ง');
+      }
+    }, 400);
+  };
+
+  const confirmCheckIn = () => {
+    if (!foundRacer || foundRacer.alreadyCheckedIn) return;
+    const checkInRecord = {
+      id: Date.now(),
+      refId: foundRacer.reg.refId,
+      racerId: foundRacer.racer.id,
+      racerName: `${foundRacer.racer.thFirstName} ${foundRacer.racer.thLastName}`,
+      eventId: foundRacer.reg.eventId,
+      time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+    };
+    onCheckIn(checkInRecord);
+    setRecentCheckIns([checkInRecord, ...recentCheckIns]);
+    setFoundRacer({ ...foundRacer, alreadyCheckedIn: true });
+    setTimeout(() => {
+      setScanInput('');
+      setFoundRacer(null);
+    }, 2000);
+  };
+
+  const quickFillSamples = registrations.flatMap(r => r.racers.map(racer => ({ refId: r.refId, name: `${racer.thFirstName} ${racer.thLastName}` }))).slice(0, 3);
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6">
+        <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">เริ่มงานหน้าสนาม</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Check-in หน้างาน</h1>
+        <p className="text-sm text-slate-500 mt-1">สแกน QR Code ของผู้แข่งเพื่อบันทึกการเข้าร่วม</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3">
+          <div className="rounded-2xl bg-white border-2 border-slate-200 overflow-hidden">
+            <div className="relative aspect-video bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-6 sm:inset-10 pointer-events-none">
+                <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-red-500 rounded-tl-lg" />
+                <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-red-500 rounded-tr-lg" />
+                <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-red-500 rounded-bl-lg" />
+                <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-red-500 rounded-br-lg" />
+              </div>
+              {scanning && (
+                <div className="absolute inset-x-10 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent" style={{ animation: 'scanline 1s ease-in-out infinite', top: '50%' }} />
+              )}
+              <div className="text-center text-white relative z-10">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 mb-3">
+                  <Flag className="w-10 h-10 text-red-400" strokeWidth={1.5} />
+                </div>
+                <p className="text-xs font-bold text-white/60 uppercase tracking-widest">{scanning ? 'กำลังสแกน...' : 'รอการสแกน'}</p>
+                <p className="text-[11px] text-white/40 mt-1">เล็งกล้องไปที่ QR Code บนบัตรนักแข่ง</p>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-5">
+              <Label>หรือใส่เลขอ้างอิง / ชื่อผู้แข่งด้วยตนเอง</Label>
+              <div className="flex gap-2">
+                <Input
+                  icon={Tag}
+                  placeholder="เช่น REG-20260315 หรือ ภูริชญา"
+                  value={scanInput}
+                  onChange={e => setScanInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleScan()}
+                />
+                <Button onClick={() => handleScan()} disabled={scanning} className="flex-shrink-0">
+                  {scanning ? 'กำลังค้นหา...' : 'ค้นหา'}
+                  {!scanning && <ArrowRight className="w-4 h-4" />}
+                </Button>
+              </div>
+
+              {quickFillSamples.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-medium">ทดสอบ:</span>
+                  {quickFillSamples.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setScanInput(s.refId); handleScan(s.refId); }}
+                      className="text-[10px] px-2 py-1 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 transition font-mono font-bold"
+                    >
+                      {s.refId}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-3">
+                  <Alert>{error}</Alert>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {foundRacer && (
+            <div className={`mt-4 rounded-2xl overflow-hidden border-2 ${foundRacer.alreadyCheckedIn ? 'border-amber-300' : 'border-green-300'} bg-white`}>
+              <div className={`px-4 py-3 ${foundRacer.alreadyCheckedIn ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-800'} flex items-center justify-between`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full ${foundRacer.alreadyCheckedIn ? 'bg-amber-600' : 'bg-green-600'} flex items-center justify-center`}>
+                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black">
+                      {foundRacer.alreadyCheckedIn ? 'นักแข่งเช็คอินแล้ว' : 'พบข้อมูลนักแข่ง'}
+                    </p>
+                    <p className="text-[11px]">
+                      {foundRacer.alreadyCheckedIn ? 'ตรวจสอบรายการด้านล่าง' : 'ตรวจสอบและกดยืนยันการเช็คอิน'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 sm:p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">ชื่อนักแข่ง</p>
+                    <p className="text-lg font-bold text-slate-900">{foundRacer.racer.thFirstName} {foundRacer.racer.thLastName}</p>
+                    <p className="text-xs text-slate-500">{foundRacer.racer.enFirstName} {foundRacer.racer.enLastName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">เลขอ้างอิง</p>
+                    <p className="text-lg font-mono font-bold text-red-600">{foundRacer.reg.refId}</p>
+                    <p className="text-xs text-slate-500">ลงทะเบียน {foundRacer.reg.date}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3 mb-4">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">รายการแข่ง</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(foundRacer.racer.selectedDates || []).map(did => {
+                      const dateObj = RACE_DATES.find(d => d.id === did);
+                      const tiers = (foundRacer.racer.selectedRaces?.[did] || []).map(tid => {
+                        const t = RACE_TIERS.find(x => x.id === tid);
+                        return t?.label;
+                      }).filter(Boolean);
+                      return tiers.map((label, ti) => (
+                        <span key={did + ti} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-700">
+                          <Calendar className="w-2.5 h-2.5" strokeWidth={2} />
+                          {dateObj?.short} · รุ่น {label}
+                        </span>
+                      ));
+                    })}
+                  </div>
+                </div>
+                {!foundRacer.alreadyCheckedIn ? (
+                  <Button onClick={confirmCheckIn} className="w-full">
+                    <Check className="w-4 h-4" /> ยืนยันการเช็คอิน
+                  </Button>
+                ) : (
+                  <div className="text-center text-xs text-amber-700 font-medium py-2">
+                    ✓ นักแข่งคนนี้ได้เช็คอินไปแล้ว ไม่สามารถเช็คอินซ้ำได้
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-2">
+          <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden lg:sticky lg:top-24">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">เช็คอินล่าสุด</h2>
+                <p className="text-[10px] text-slate-500">{recentCheckIns.length} รายการ</p>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                Live
+              </span>
+            </div>
+            {recentCheckIns.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500">ยังไม่มีการเช็คอิน</div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                {recentCheckIns.slice(0, 15).map(ci => (
+                  <div key={ci.id} className="px-4 py-3 hover:bg-slate-50/50 transition">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3.5 h-3.5 text-green-700" strokeWidth={3} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{ci.racerName}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">{ci.refId}</p>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">{ci.time}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // APP — view routing + auth state
 // ============================================================
 function App() {
-  // view: 'landing' | 'register' | 'history'
+  // view: 'landing' | 'register' | 'history' | 'admin-dashboard' | 'admin-checkin'
   const [view, setView] = useState('landing');
   const [user, setUser] = useState(null);
+  const [admin, setAdmin] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [adminLoginOpen, setAdminLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState('login');
   const [registrations, setRegistrations] = useState([]);
+  const [checkIns, setCheckIns] = useState([]);
   const [qrModal, setQrModal] = useState({ open: false, registration: null, racer: null });
   const [eventSelectOpen, setEventSelectOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -2543,6 +3041,61 @@ function App() {
     setLoginMode(mode);
     setLoginOpen(true);
   };
+
+  const handleAdminLogin = (adminData) => {
+    setAdmin(adminData);
+    // โหลด mock registrations ถ้ายังไม่มี เพื่อให้ admin มีข้อมูลให้ดู
+    if (registrations.length === 0) {
+      const mock = [
+        {
+          id: Date.now() - 2000000, refId: 'REG-20260301', date: '1 มี.ค. 2569', eventId: 'evt2',
+          racers: [
+            { id: 'R001', thFirstName: 'ภูริชญา', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Phurichaya', enLastName: 'Chanphen', gender: 'F', birthDate: '2020-08-12', selectedDates: ['D1', 'D3'], selectedRaces: { D1: ['U3'], D3: ['GS'] } },
+            { id: 'R002', thFirstName: 'ธีรภัทร', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Teerapat', enLastName: 'Chanphen', gender: 'M', birthDate: '2022-03-25', selectedDates: ['D1', 'D2'], selectedRaces: { D1: ['U2'], D2: ['OJ'] } },
+          ],
+          totalItems: 4, total: 2800,
+        },
+        {
+          id: Date.now() - 1500000, refId: 'REG-20260315', date: '15 มี.ค. 2569', eventId: 'evt1',
+          racers: [
+            { id: 'R003', thFirstName: 'อนุภัทร', thLastName: 'วงศ์สว่าง', enFirstName: 'Anupat', enLastName: 'Wongsawang', gender: 'M', birthDate: '2018-11-30', selectedDates: ['D5', 'D7'], selectedRaces: { D5: ['U5'], D7: ['OP'] } },
+          ],
+          totalItems: 2, total: 2000,
+        },
+        {
+          id: Date.now() - 1000000, refId: 'REG-20260420', date: '20 เม.ย. 2569', eventId: 'evt2',
+          racers: [
+            { id: 'R004', thFirstName: 'นภัสสร', thLastName: 'ศรีสุวรรณ', enFirstName: 'Naphatsorn', enLastName: 'Srisuwan', gender: 'F', birthDate: '2019-06-18', selectedDates: ['D2'], selectedRaces: { D2: ['U4'] } },
+            { id: 'R005', thFirstName: 'กิตติพงษ์', thLastName: 'ศรีสุวรรณ', enFirstName: 'Kittipong', enLastName: 'Srisuwan', gender: 'M', birthDate: '2017-09-05', selectedDates: ['D2', 'D4'], selectedRaces: { D2: ['U6'], D4: ['OS'] } },
+          ],
+          totalItems: 3, total: 2400,
+        },
+      ];
+      setRegistrations(mock);
+    }
+    setView('admin-dashboard');
+  };
+
+  const handleAdminLogout = () => {
+    setAdmin(null);
+    setView('landing');
+  };
+
+  const handleCheckIn = (record) => {
+    setCheckIns(prev => [record, ...prev]);
+  };
+
+  // Keyboard shortcut: Ctrl+Shift+A เปิด admin login
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        if (!admin) setAdminLoginOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [admin]);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -2642,69 +3195,108 @@ function App() {
     setView('history');
   };
 
+  const isAdminView = view === 'admin-dashboard' || view === 'admin-checkin';
+
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
-      <Navbar
-        currentView={view}
-        onNavigate={setView}
-        user={user}
-        onLogin={openLogin}
-        onLogout={handleLogout}
-        transparent={view === 'landing'}
-      />
-
-      <main className={view === 'landing' ? '' : 'pt-20'}>
-        {view === 'landing' && (
-          <LandingPage user={user} onRegisterClick={handleRegisterClick} />
-        )}
-
-        {view === 'register' && (
-          <div className="relative min-h-[calc(100vh-4rem)]" style={{ backgroundColor: '#fef2f2' }}>
-            <div
-              className="absolute inset-0 pointer-events-none opacity-50"
-              style={{
-                backgroundImage: `url(${BG_DATA_URL})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'top center',
-                backgroundRepeat: 'no-repeat',
-              }}
-              aria-hidden="true"
-            />
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.9) 30%, rgba(255,255,255,1) 60%)',
-              }}
-              aria-hidden="true"
-            />
-            <div className="relative max-w-2xl mx-auto px-4 py-6 sm:py-8">
-              <RaceRegistration
-                onBackToHome={() => setView(user ? 'history' : 'landing')}
-                onComplete={handleRegistrationComplete}
-                startStep={user ? 2 : 1}
-                prefillUser={user}
-                selectedEvent={selectedEvent}
-              />
-            </div>
-          </div>
-        )}
-
-        {view === 'history' && user && (
-          <HistoryPage
-            user={user}
-            registrations={registrations}
-            onRegisterClick={() => setEventSelectOpen(true)}
-            onBackToHome={() => setView('landing')}
-            onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      {/* Admin views มี navbar แยก */}
+      {isAdminView && admin ? (
+        <>
+          <AdminNavbar
+            adminView={view}
+            onNavigate={setView}
+            admin={admin}
+            onLogout={handleAdminLogout}
           />
-        )}
-      </main>
+          <main>
+            {view === 'admin-dashboard' && (
+              <AdminDashboard
+                registrations={registrations}
+                checkIns={checkIns}
+                onNavigate={setView}
+              />
+            )}
+            {view === 'admin-checkin' && (
+              <AdminCheckInPage
+                registrations={registrations}
+                checkIns={checkIns}
+                onCheckIn={handleCheckIn}
+              />
+            )}
+          </main>
+        </>
+      ) : (
+        <div className="min-h-screen bg-white">
+          <Navbar
+            currentView={view}
+            onNavigate={setView}
+            user={user}
+            onLogin={openLogin}
+            onLogout={handleLogout}
+            transparent={view === 'landing'}
+            onAdminLogin={() => setAdminLoginOpen(true)}
+          />
+
+          <main className={view === 'landing' ? '' : 'pt-20'}>
+            {view === 'landing' && (
+              <LandingPage user={user} onRegisterClick={handleRegisterClick} />
+            )}
+
+            {view === 'register' && (
+              <div className="relative min-h-[calc(100vh-4rem)]" style={{ backgroundColor: '#fef2f2' }}>
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-50"
+                  style={{
+                    backgroundImage: `url(${BG_DATA_URL})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'top center',
+                    backgroundRepeat: 'no-repeat',
+                  }}
+                  aria-hidden="true"
+                />
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.9) 30%, rgba(255,255,255,1) 60%)',
+                  }}
+                  aria-hidden="true"
+                />
+                <div className="relative max-w-2xl mx-auto px-4 py-6 sm:py-8">
+                  <RaceRegistration
+                    onBackToHome={() => setView(user ? 'history' : 'landing')}
+                    onComplete={handleRegistrationComplete}
+                    startStep={user ? 2 : 1}
+                    prefillUser={user}
+                    selectedEvent={selectedEvent}
+                  />
+                </div>
+              </div>
+            )}
+
+            {view === 'history' && user && (
+              <HistoryPage
+                user={user}
+                registrations={registrations}
+                onRegisterClick={() => setEventSelectOpen(true)}
+                onBackToHome={() => setView('landing')}
+                onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
+              />
+            )}
+          </main>
+        </div>
+      )}
 
       <LoginModal
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
         onLogin={handleLogin}
         defaultMode={loginMode}
+      />
+
+      <AdminLoginModal
+        open={adminLoginOpen}
+        onClose={() => setAdminLoginOpen(false)}
+        onLogin={handleAdminLogin}
       />
 
       <EventSelectModal

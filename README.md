@@ -67,4 +67,4 @@ npx serve
 
 ## 📄 License
 
-© 2026 Grandprix Runbike Championship
+© 2026 NidSs

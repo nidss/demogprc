@@ -1061,6 +1061,82 @@ function StepRacers({ racers, setRacers, next, prev }) {
   );
 }
 
+// Custom country dropdown — ทำให้ Windows + macOS เห็น flag เหมือนกัน
+function CountrySelect({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef(null);
+
+  const selected = COUNTRIES.find(c => c.code === value) || COUNTRIES[0];
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filtered = COUNTRIES.filter(c =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`w-full h-10 px-3 text-sm rounded-md border bg-white text-left flex items-center justify-between gap-2 transition outline-none ${
+          open ? 'border-slate-900 ring-2 ring-slate-200' : 'border-slate-200 hover:border-slate-300'
+        }`}
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="emoji-flag text-lg leading-none flex-shrink-0">{selected.flag}</span>
+          <span className="truncate text-slate-900">{selected.name}</span>
+          <span className="text-[10px] font-mono text-slate-400">({selected.code})</span>
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-md border border-slate-200 bg-white shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-slate-100">
+            <input
+              type="text"
+              autoFocus
+              placeholder="ค้นหาประเทศ..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full h-8 px-2 text-xs rounded border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-200 outline-none"
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-slate-500">ไม่พบประเทศที่ค้นหา</div>
+            ) : (
+              filtered.map(c => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => { onChange(c.code); setOpen(false); setSearch(''); }}
+                  className={`w-full px-3 py-2 text-sm text-left flex items-center gap-2 transition ${
+                    c.code === value ? 'bg-red-50 text-red-700' : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <span className="emoji-flag text-lg leading-none flex-shrink-0">{c.flag}</span>
+                  <span className="flex-1 truncate">{c.name}</span>
+                  <span className="text-[10px] font-mono text-slate-400">{c.code}</span>
+                  {c.code === value && <Check className="w-3.5 h-3.5 text-red-600 flex-shrink-0" strokeWidth={3} />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
   const [open, setOpen] = useState(true);
   const ageYM = calcAgeYM(r.birthDate);
@@ -1165,15 +1241,10 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
               </div>
               <div>
                 <Label required>ประเทศ</Label>
-                <select
+                <CountrySelect
                   value={r.country || 'TH'}
-                  onChange={e => onUpdate({ country: e.target.value })}
-                  className="w-full h-10 px-3 text-sm rounded-md border border-slate-200 bg-white focus:border-slate-900 focus:ring-2 focus:ring-slate-200 outline-none transition"
-                >
-                  {COUNTRIES.map(c => (
-                    <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-                  ))}
-                </select>
+                  onChange={code => onUpdate({ country: code })}
+                />
               </div>
               <div>
                 <Label required>เพศ</Label>

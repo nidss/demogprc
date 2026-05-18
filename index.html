@@ -18,7 +18,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 
   <!-- Babel standalone for JSX transform in browser -->
   <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
@@ -37,6 +37,12 @@
   <style>
     html { font-family: 'Inter', 'Noto Sans Thai', system-ui, -apple-system, sans-serif; }
     body { margin: 0; }
+    /* Emoji flags — บังคับใช้ Noto Color Emoji เพื่อให้ Windows แสดง flag ได้เหมือนกับ macOS */
+    .emoji-flag, .emoji {
+      font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Twemoji Mozilla', sans-serif;
+      font-weight: normal;
+      font-style: normal;
+    }
     #loader {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
       background: #fef2f2; z-index: 9999; transition: opacity 0.4s;

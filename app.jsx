@@ -3077,6 +3077,9 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
+  const [eventFilter, setEventFilter] = useState('all'); // 'all' | event.id
+  const [racerFilter, setRacerFilter] = useState('all'); // 'all' | 'checked' | 'pending'
+  const [racerSearch, setRacerSearch] = useState('');
 
   useEffect(() => { setRecentCheckIns(checkIns); }, [checkIns]);
 
@@ -3300,6 +3303,216 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
           </div>
         </div>
       </div>
+
+      {/* All registered racers — รายชื่อทั้งหมด */}
+      <div className="mt-6 rounded-2xl bg-white border border-slate-200 overflow-hidden">
+        <div className="px-4 sm:px-5 py-4 border-b border-slate-100">
+          <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <User className="w-4 h-4 text-red-600" strokeWidth={2} />
+                ผู้สมัครทั้งหมด
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">รายชื่อนักแข่งที่ลงทะเบียน · คลิกเพื่อเช็คอินด่วน</p>
+            </div>
+          </div>
+
+          {/* Event filter tabs */}
+          <div className="flex gap-2 flex-wrap mb-3">
+            {(() => {
+              const allRacers = registrations.flatMap(r => r.racers.map(racer => ({ racer, reg: r })));
+              const allCount = allRacers.length;
+              return (
+                <button
+                  onClick={() => setEventFilter('all')}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                    eventFilter === 'all'
+                      ? 'bg-slate-900 text-white shadow'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  ทั้งหมด
+                  <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md text-[10px] font-black ${
+                    eventFilter === 'all' ? 'bg-white/20 text-white' : 'bg-white text-slate-900'
+                  }`}>{allCount}</span>
+                </button>
+              );
+            })()}
+            {EVENTS.map(evt => {
+              const racersForEvent = registrations
+                .filter(r => r.eventId === evt.id)
+                .reduce((s, r) => s + r.racers.length, 0);
+              const isActive = eventFilter === evt.id;
+              return (
+                <button
+                  key={evt.id}
+                  onClick={() => setEventFilter(evt.id)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                    isActive
+                      ? 'bg-red-600 text-white shadow shadow-red-600/30'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {evt.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
+                  <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md text-[10px] font-black ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-900'
+                  }`}>{racersForEvent}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Status filter + search */}
+          <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+              {[
+                { id: 'all', label: 'ทั้งหมด' },
+                { id: 'pending', label: 'รอเช็คอิน' },
+                { id: 'checked', label: 'เช็คอินแล้ว' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setRacerFilter(f.id)}
+                  className={`px-3 h-7 text-[11px] font-semibold rounded-md transition ${
+                    racerFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder="ค้นหาชื่อนักแข่ง..."
+                value={racerSearch}
+                onChange={e => setRacerSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* List */}
+        {(() => {
+          // คำนวณ flat list ของนักแข่งทั้งหมด + check status
+          let allRacers = registrations.flatMap(r =>
+            r.racers.map(racer => {
+              const isCheckedIn = recentCheckIns.some(c => c.refId === r.refId && c.racerId === racer.id);
+              const checkInRecord = recentCheckIns.find(c => c.refId === r.refId && c.racerId === racer.id);
+              return { racer, reg: r, isCheckedIn, checkInRecord };
+            })
+          );
+
+          // Filter by event
+          if (eventFilter !== 'all') {
+            allRacers = allRacers.filter(x => x.reg.eventId === eventFilter);
+          }
+          // Filter by status
+          if (racerFilter === 'checked') allRacers = allRacers.filter(x => x.isCheckedIn);
+          else if (racerFilter === 'pending') allRacers = allRacers.filter(x => !x.isCheckedIn);
+
+          // Search
+          const q = racerSearch.trim().toLowerCase();
+          if (q) {
+            allRacers = allRacers.filter(x => {
+              const th = `${x.racer.thFirstName} ${x.racer.thLastName}`;
+              const en = `${x.racer.enFirstName} ${x.racer.enLastName}`.toLowerCase();
+              return th.includes(q) || en.includes(q) || x.reg.refId.toLowerCase().includes(q);
+            });
+          }
+
+          // นับสรุป
+          const totalCheckedIn = allRacers.filter(x => x.isCheckedIn).length;
+          const totalPending = allRacers.length - totalCheckedIn;
+
+          return (
+            <>
+              <div className="px-4 sm:px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] flex-wrap gap-2">
+                <span className="font-bold text-slate-700">
+                  พบ <span className="text-red-600">{allRacers.length}</span> คน
+                </span>
+                <div className="flex items-center gap-3 text-[10px]">
+                  <span className="inline-flex items-center gap-1 text-green-700 font-semibold">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                    เช็คอินแล้ว {totalCheckedIn}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-slate-600 font-semibold">
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+                    รอเช็คอิน {totalPending}
+                  </span>
+                </div>
+              </div>
+
+              {allRacers.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-500">ไม่พบรายชื่อตามเงื่อนไขที่เลือก</div>
+              ) : (
+                <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+                  {allRacers.map((x, idx) => {
+                    const ev = EVENTS.find(e => e.id === x.reg.eventId);
+                    let age = null;
+                    if (x.racer.birthDate) {
+                      const birth = new Date(x.racer.birthDate);
+                      const now = new Date();
+                      age = now.getFullYear() - birth.getFullYear();
+                      const m = now.getMonth() - birth.getMonth();
+                      if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+                    }
+                    const tierLabels = [];
+                    for (const did of x.racer.selectedDates || []) {
+                      for (const tid of (x.racer.selectedRaces?.[did] || [])) {
+                        const t = RACE_TIERS.find(t => t.id === tid);
+                        if (t) tierLabels.push(t.label);
+                      }
+                    }
+                    return (
+                      <button
+                        key={x.reg.id + '-' + x.racer.id}
+                        onClick={() => { setScanInput(x.reg.refId); handleScan(x.reg.refId); }}
+                        className="w-full px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition group text-left"
+                      >
+                        <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-[10px] font-black shadow-sm flex-shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-bold text-slate-900 truncate">
+                              {x.racer.thFirstName} {x.racer.thLastName}
+                            </p>
+                            {ev && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-[9px] font-bold uppercase tracking-wider">
+                                {ev.id === 'evt1' ? 'RUN BIKE' : 'GPRC'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 truncate">
+                            <span className="font-mono">{x.reg.refId}</span>
+                            <span className="text-slate-300 mx-1">·</span>
+                            {x.racer.gender === 'M' ? '👦' : x.racer.gender === 'F' ? '👧' : ''} {age !== null ? `${age} ปี` : ''}
+                            <span className="text-slate-300 mx-1">·</span>
+                            {tierLabels.length > 0 && `รุ่น ${tierLabels.join(', ')}`}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {x.isCheckedIn ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold">
+                              <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                              <span className="hidden sm:inline">{x.checkInRecord?.time}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold group-hover:bg-red-50 group-hover:text-red-600 transition">
+                              <span className="w-1.5 h-1.5 bg-slate-400 rounded-full group-hover:bg-red-500" />
+                              รอเช็คอิน
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -3369,10 +3582,10 @@ function App() {
     setCheckIns(prev => [record, ...prev]);
   };
 
-  // Keyboard shortcut: Ctrl+Shift+A เปิด admin login
+  // Keyboard shortcut: Ctrl+Shift+Z เปิด admin login
   useEffect(() => {
     const handler = (e) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
         e.preventDefault();
         if (!admin) setAdminLoginOpen(true);
       }

@@ -20,7 +20,7 @@
 - 🎫 ใส่คูปองส่วนลด
 - 💳 ชำระเงินผ่าน BEAM (จำลอง)
 - ✅ QR Code ลงทะเบียน
-- หน้า Dashboard (Admin)
+- หน้า Dashboard (Admin) (กด Ctrl+Shift+Z เพื่อเปิดหน้า Login Admin)
 - หน้า Check-in (Admin)
 
 ## 🧪 Test Coupons

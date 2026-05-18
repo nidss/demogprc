@@ -82,9 +82,8 @@ const RACE_DATES = [
 ];
 
 const COUPONS = {
-  'RACE100': { type: 'fixed', value: 100, label: 'ลด 100 บาท' },
-  'RACE10P': { type: 'percent', value: 10, label: 'ลด 10%' },
-  'NEWBIE': { type: 'fixed', value: 200, label: 'ลด 200 บาท' },
+  'GPRC10': { type: 'percent10', label: 'ส่วนลด 10% (ทั้งหมดของนักแข่งคนนี้)' },
+  'GPRCMAIN': { type: 'main-free', label: 'ฟรีรุ่นหลัก (รุ่นเพิ่มเติมคิดเงินปกติ)' },
 };
 
 // ============================================================
@@ -974,10 +973,23 @@ const ConsentRowWithRead = ({ icon: Icon, title, desc, checked, hasRead, onChang
 // ============================================================
 // STEP 2: RACERS
 // ============================================================
-function StepRacers({ racers, setRacers, next, prev }) {
+function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
   const [err, setErr] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const addRacer = () => setRacers([...racers, newRacer()]);
+  const addFromSaved = (savedRacer) => {
+    // copy ของจาก savedRacers แต่ reset เลือกวัน/รุ่น (เพราะของเดิมเป็นข้อมูลเก่า)
+    const copy = {
+      ...savedRacer,
+      // keep ข้อมูลตัวบุคคล แต่ reset เลือกการแข่ง
+      selectedDates: [],
+      selectedRaces: {},
+      documents: savedRacer.documents || [],
+    };
+    setRacers([...racers, copy]);
+    setPickerOpen(false);
+  };
   const removeRacer = (id) => {
     if (racers.length === 1) return;
     setRacers(racers.filter(r => r.id !== id));
@@ -985,6 +997,10 @@ function StepRacers({ racers, setRacers, next, prev }) {
   const updateRacer = (id, patch) => {
     setRacers(racers.map(r => r.id === id ? { ...r, ...patch } : r));
   };
+
+  // เช็คว่า saved racer คนไหนถูกเลือกไปแล้ว เพื่อไม่ให้ซ้ำ
+  const usedIds = new Set(racers.map(r => r.id));
+  const availableSaved = savedRacers.filter(r => !usedIds.has(r.id));
 
   const submit = () => {
     for (const r of racers) {
@@ -1037,12 +1053,30 @@ function StepRacers({ racers, setRacers, next, prev }) {
           />
         ))}
 
-        <button
-          onClick={addRacer}
-          className="w-full h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
-        >
-          <Plus className="w-4 h-4" /> เพิ่มนักแข่งอีกคน
-        </button>
+        {availableSaved.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="h-11 border-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-red-700 text-sm font-bold rounded-md inline-flex items-center justify-center gap-1.5 transition"
+            >
+              <User className="w-4 h-4" /> เลือกจากที่บันทึกไว้
+              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-700 text-[10px] font-black">{availableSaved.length}</span>
+            </button>
+            <button
+              onClick={addRacer}
+              className="h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
+            >
+              <Plus className="w-4 h-4" /> เพิ่มใหม่
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={addRacer}
+            className="w-full h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
+          >
+            <Plus className="w-4 h-4" /> เพิ่มนักแข่งอีกคน
+          </button>
+        )}
 
         {err && <Alert>{err}</Alert>}
 
@@ -1057,6 +1091,44 @@ function StepRacers({ racers, setRacers, next, prev }) {
           </Button>
         </div>
       </div>
+
+      {/* Saved racers picker modal */}
+      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="เลือกนักแข่งที่บันทึกไว้">
+        <p className="text-xs text-slate-500 mb-3">เลือกนักแข่งจากรายการที่คุณบันทึกไว้ในระบบ (จะคัดลอกข้อมูลและให้คุณเลือกวัน-รุ่นแข่งใหม่)</p>
+        {availableSaved.length === 0 ? (
+          <div className="text-center py-6 text-sm text-slate-500">ไม่มีนักแข่งที่บันทึกไว้</div>
+        ) : (
+          <div className="space-y-2 max-h-[400px] overflow-y-auto -mx-1 px-1">
+            {availableSaved.map(r => {
+              const country = COUNTRIES.find(c => c.code === r.country) || COUNTRIES[0];
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => addFromSaved(r)}
+                  className="w-full text-left p-3 rounded-lg border-2 border-slate-200 bg-white hover:border-red-300 hover:bg-red-50/30 transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl emoji-flag leading-none flex-shrink-0">{country.flag}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        {r.thFirstName} {r.thLastName}
+                        {r.nickname && <span className="text-slate-400 font-normal"> · {r.nickname}</span>}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {r.gender === 'male' || r.gender === 'M' ? 'ชาย' : 'หญิง'}
+                        {r.shirtSize && ` · ไซส์ ${r.shirtSize}`}
+                        {r.teamName && ` · ${r.teamName}`}
+                      </p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-red-600 group-hover:translate-x-0.5 transition" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <button onClick={() => setPickerOpen(false)} className="w-full mt-3 h-10 text-sm font-medium text-slate-500 hover:text-slate-700">ปิด</button>
+      </Modal>
     </Card>
   );
 }
@@ -1556,18 +1628,12 @@ function DatePicker({ dates, selected, onToggle }) {
 function DateTierPicker({ date, eligible, selected, onToggle }) {
   const sub = selected.reduce((s, tid) => s + (RACE_TIERS.find(x => x.id === tid)?.price || 0), 0);
 
-  // group eligible tiers by tier group
-  const byGroup = TIER_GROUPS.map(g => ({
-    ...g,
-    tiers: eligible.filter(t => t.group === g.id),
-  })).filter(g => g.tiers.length > 0);
+  // แยก main tier (standard - ตามอายุ) vs additional tiers (girl, open)
+  const mainTiers = eligible.filter(t => t.group === 'standard');
+  const additionalTiers = eligible.filter(t => t.group !== 'standard');
 
-  // visual style ของแต่ละ group
-  const groupStyles = {
-    standard: { dot: 'bg-slate-700', text: 'text-slate-900', bg: 'bg-slate-50/70', border: 'border-slate-200' },
-    girl: { dot: 'bg-pink-500', text: 'text-pink-900', bg: 'bg-pink-50/60', border: 'border-pink-200' },
-    open: { dot: 'bg-amber-500', text: 'text-amber-900', bg: 'bg-amber-50/60', border: 'border-amber-200' },
-  };
+  // เช็คว่าเลือกรุ่นหลักแล้วหรือยัง
+  const hasMainTier = mainTiers.some(t => selected.includes(t.id));
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
@@ -1582,54 +1648,111 @@ function DateTierPicker({ date, eligible, selected, onToggle }) {
         </span>
       </div>
 
-      {/* Tier groups — แต่ละ group เป็นกล่องของตัวเอง */}
-      <div className="p-2.5 space-y-2">
-        {byGroup.map(group => {
-          const style = groupStyles[group.id];
-          const selectedInGroup = group.tiers.filter(t => selected.includes(t.id)).length;
-          return (
-            <div key={group.id} className={`rounded-md border ${style.border} ${style.bg} overflow-hidden`}>
-              {/* group header */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-current/10">
-                <span className={`w-1.5 h-1.5 rounded-full ${style.dot} flex-shrink-0`} />
-                <span className={`text-[11px] font-bold ${style.text} uppercase tracking-wide`}>
-                  {group.label}
-                </span>
-                <span className="text-[10px] text-slate-500 font-normal hidden sm:inline">
-                  · {group.desc}
-                </span>
-                {selectedInGroup > 0 && (
-                  <span className="ml-auto text-[10px] font-semibold text-slate-600 bg-white px-1.5 py-0.5 rounded">
-                    เลือกแล้ว {selectedInGroup}
-                  </span>
-                )}
+      <div className="p-3 space-y-3">
+        {/* Section 1: รุ่นหลัก (ตามอายุ) */}
+        {mainTiers.length > 0 && (
+          <div className="rounded-lg border-2 border-red-200 bg-red-50/40 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-100/50 border-b border-red-200">
+              <span className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-white text-[10px] font-black flex-shrink-0">1</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-red-900 uppercase tracking-wide">รุ่นหลัก (ตามอายุ)</p>
+                <p className="text-[10px] text-red-700">เลือกได้ 1 รุ่น · จำเป็นต้องเลือกก่อน</p>
               </div>
-              {/* tier buttons */}
-              <div className="flex flex-wrap gap-1.5 p-2.5">
-                {group.tiers.map(t => {
-                  const isSel = selected.includes(t.id);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => onToggle(t.id)}
-                      className={`px-2.5 h-8 rounded-md border text-xs font-medium transition flex items-center gap-1.5 ${
-                        isSel
-                          ? 'bg-slate-900 border-slate-900 text-white'
-                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400'
-                      }`}
-                      title={t.range}
-                    >
-                      {isSel && <Check className="w-3 h-3" strokeWidth={2.5} />}
-                      {t.label}
-                      <span className={isSel ? 'text-slate-300' : 'text-slate-400'}>· {fmt(t.price)}</span>
-                    </button>
-                  );
-                })}
+              {hasMainTier && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-100 border border-green-200 text-green-700 text-[9px] font-bold">
+                  <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                  เลือกแล้ว
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 p-2.5">
+              {mainTiers.map(t => {
+                const isSel = selected.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      // เลือกรุ่นหลักได้แค่ 1 — toggle: ถ้าคลิก rerun เป็นการ deselect
+                      if (isSel) {
+                        // จะ deselect รุ่นหลัก ต้อง deselect additional tiers ทั้งหมดของวันนี้ก่อน (เพราะต้องเลือกหลักก่อน)
+                        const otherMains = mainTiers.filter(x => x.id !== t.id && selected.includes(x.id));
+                        // คลิก deselect ตัวเดียวอย่างเดียว ไม่ tap rerun additional
+                        onToggle(t.id);
+                      } else {
+                        // เลือกใหม่ — deselect main อื่นก่อนแล้ว toggle ตัวนี้
+                        const currentMain = mainTiers.find(x => selected.includes(x.id));
+                        if (currentMain) onToggle(currentMain.id);
+                        onToggle(t.id);
+                      }
+                    }}
+                    className={`px-2.5 h-9 rounded-md border-2 text-xs font-bold transition flex items-center gap-1.5 ${
+                      isSel
+                        ? 'bg-red-600 border-red-700 text-white shadow-md shadow-red-600/30'
+                        : 'bg-white border-red-200 text-red-700 hover:border-red-400 hover:bg-red-50'
+                    }`}
+                    title={t.range}
+                  >
+                    {isSel && <Check className="w-3 h-3" strokeWidth={2.5} />}
+                    {t.label}
+                    <span className={`font-normal ${isSel ? 'text-red-100' : 'text-red-500'}`}>· {fmt(t.price)} ฿</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Section 2: รุ่นเพิ่มเติม (Open / Open Girl) — disabled ถ้ายังไม่เลือกหลัก */}
+        {additionalTiers.length > 0 && (
+          <div className={`rounded-lg border-2 overflow-hidden transition ${
+            hasMainTier ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/60 opacity-60'
+          }`}>
+            <div className={`flex items-center gap-2 px-3 py-2 border-b ${
+              hasMainTier ? 'bg-amber-100/50 border-amber-200' : 'bg-slate-100 border-slate-200'
+            }`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ${
+                hasMainTier ? 'bg-amber-600' : 'bg-slate-400'
+              }`}>2</span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[11px] font-bold uppercase tracking-wide ${
+                  hasMainTier ? 'text-amber-900' : 'text-slate-600'
+                }`}>รุ่นเพิ่มเติม (Open)</p>
+                <p className={`text-[10px] ${hasMainTier ? 'text-amber-700' : 'text-slate-500'}`}>
+                  {hasMainTier ? 'เลือกได้หลายรุ่น · เพิ่มความท้าทาย' : '🔒 กรุณาเลือกรุ่นหลักก่อน'}
+                </p>
               </div>
             </div>
-          );
-        })}
+            <div className="flex flex-wrap gap-1.5 p-2.5">
+              {additionalTiers.map(t => {
+                const isSel = selected.includes(t.id);
+                const isGirl = t.group === 'girl';
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => hasMainTier && onToggle(t.id)}
+                    disabled={!hasMainTier}
+                    className={`px-2.5 h-9 rounded-md border-2 text-xs font-medium transition flex items-center gap-1.5 ${
+                      !hasMainTier
+                        ? 'cursor-not-allowed bg-white border-slate-200 text-slate-400'
+                        : isSel
+                          ? (isGirl ? 'bg-pink-600 border-pink-700 text-white' : 'bg-amber-600 border-amber-700 text-white')
+                          : (isGirl ? 'bg-white border-pink-200 text-pink-700 hover:border-pink-400' : 'bg-white border-amber-200 text-amber-700 hover:border-amber-400')
+                    }`}
+                    title={t.range}
+                  >
+                    {isSel && <Check className="w-3 h-3" strokeWidth={2.5} />}
+                    {t.label}
+                    <span className={`font-normal ${
+                      !hasMainTier ? 'text-slate-300' : isSel ? 'text-white/80' : 'text-slate-500'
+                    }`}>· {fmt(t.price)} ฿</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1699,161 +1822,225 @@ function StepGuardian({ data, setData, next, prev }) {
 }
 
 // ============================================================
-// STEP 4: SUMMARY + COUPON
+// STEP 4: SUMMARY + COUPON (per-racer)
 // ============================================================
 function StepSummary({ racers, data, setData, next, prev }) {
-  const [coupon, setCoupon] = useState(data.couponCode || '');
-  const [couponMsg, setCouponMsg] = useState('');
+  // coupons เก็บเป็น map { [racerId]: 'COUPONCODE' } ใน data.racerCoupons
+  const racerCoupons = data.racerCoupons || {};
+  const [couponInputs, setCouponInputs] = useState({}); // { [racerId]: 'typed code' }
+  const [couponMsgs, setCouponMsgs] = useState({}); // { [racerId]: { ok: bool, msg: string } }
 
-  const lineItems = useMemo(() => {
-    const items = [];
-    racers.forEach(r => {
+  // ดึงข้อมูล per-racer breakdown
+  const racerBreakdown = useMemo(() => {
+    return racers.map(r => {
+      const items = [];
+      let mainTierPrice = 0;
+      let mainTierId = null;
       r.selectedDates.forEach(did => {
         const dateObj = RACE_DATES.find(d => d.id === did);
         (r.selectedRaces[did] || []).forEach(tid => {
           const t = RACE_TIERS.find(x => x.id === tid);
+          if (!t) return;
+          const isMain = t.group === 'standard';
+          if (isMain && mainTierPrice === 0) {
+            mainTierPrice = t.price;
+            mainTierId = t.id;
+          }
           items.push({
-            racer: `${r.thFirstName} ${r.thLastName}`,
             date: dateObj?.short || '',
             tier: t.label,
             tierName: t.name || t.label,
+            tierId: t.id,
             price: t.price,
+            isMain,
           });
         });
       });
+      const subtotal = items.reduce((s, i) => s + i.price, 0);
+
+      // คำนวณส่วนลด per-racer
+      const couponCode = racerCoupons[r.id];
+      const coupon = couponCode ? COUPONS[couponCode] : null;
+      let discount = 0;
+      if (coupon) {
+        if (coupon.type === 'percent10') discount = Math.round(subtotal * 0.10);
+        else if (coupon.type === 'main-free') discount = mainTierPrice;
+      }
+      const total = Math.max(0, subtotal - discount);
+
+      return {
+        racer: r,
+        name: `${r.thFirstName} ${r.thLastName}`,
+        nickname: r.nickname,
+        items,
+        subtotal,
+        discount,
+        total,
+        couponCode,
+        coupon,
+        mainTierId,
+        mainTierPrice,
+      };
     });
-    return items;
-  }, [racers]);
+  }, [racers, racerCoupons]);
 
-  const grouped = useMemo(() => {
-    const map = {};
-    racers.forEach(r => {
-      const name = `${r.thFirstName} ${r.thLastName}`;
-      map[name] = [];
-      r.selectedDates.forEach(did => {
-        const dateObj = RACE_DATES.find(d => d.id === did);
-        (r.selectedRaces[did] || []).forEach(tid => {
-          const t = RACE_TIERS.find(x => x.id === tid);
-          map[name].push({ date: dateObj?.short || '', tier: t.label, tierName: t.name || t.label, price: t.price });
-        });
-      });
-    });
-    return map;
-  }, [racers]);
+  // ยอดรวมทั้งหมด
+  const totalSubtotal = racerBreakdown.reduce((s, r) => s + r.subtotal, 0);
+  const totalDiscount = racerBreakdown.reduce((s, r) => s + r.discount, 0);
+  const totalNet = racerBreakdown.reduce((s, r) => s + r.total, 0);
 
-  const subtotal = lineItems.reduce((s, i) => s + i.price, 0);
-  const discount = useMemo(() => {
-    if (!data.appliedCoupon) return 0;
-    const c = COUPONS[data.appliedCoupon];
-    if (!c) return 0;
-    if (c.type === 'fixed') return c.value;
-    if (c.type === 'percent') return Math.round(subtotal * c.value / 100);
-    return 0;
-  }, [data.appliedCoupon, subtotal]);
-  const total = Math.max(0, subtotal - discount);
-
-  const applyCoupon = () => {
-    const code = coupon.trim().toUpperCase();
+  const applyCoupon = (racerId) => {
+    const code = (couponInputs[racerId] || '').trim().toUpperCase();
     if (!code) return;
     if (COUPONS[code]) {
-      setData({ ...data, couponCode: code, appliedCoupon: code });
-      setCouponMsg(`ใช้คูปอง ${code} สำเร็จ — ${COUPONS[code].label}`);
+      setData({ ...data, racerCoupons: { ...racerCoupons, [racerId]: code } });
+      setCouponMsgs({ ...couponMsgs, [racerId]: { ok: true, msg: `ใช้คูปองสำเร็จ — ${COUPONS[code].label}` } });
     } else {
-      setData({ ...data, appliedCoupon: null });
-      setCouponMsg('โค้ดไม่ถูกต้องหรือหมดอายุ');
+      setCouponMsgs({ ...couponMsgs, [racerId]: { ok: false, msg: 'โค้ดไม่ถูกต้องหรือหมดอายุ' } });
     }
   };
-  const removeCoupon = () => {
-    setData({ ...data, couponCode: '', appliedCoupon: null });
-    setCoupon('');
-    setCouponMsg('');
+  const removeCoupon = (racerId) => {
+    const nc = { ...racerCoupons };
+    delete nc[racerId];
+    setData({ ...data, racerCoupons: nc });
+    setCouponInputs({ ...couponInputs, [racerId]: '' });
+    setCouponMsgs({ ...couponMsgs, [racerId]: null });
   };
 
   return (
     <Card>
-      <Header icon={Tag} title="สรุปยอดการลงทะเบียน" subtitle="ตรวจสอบรายการก่อนชำระเงิน" />
+      <Header icon={Tag} title="สรุปยอดการลงทะเบียน" subtitle="ตรวจสอบรายการและใช้โค้ดส่วนลดสำหรับนักแข่งแต่ละคน" />
 
       <div className="grid lg:grid-cols-5 gap-5">
         <div className="lg:col-span-3 space-y-4">
-          {Object.entries(grouped).map(([name, items]) => (
-            <div key={name}>
-              <p className="text-xs font-medium text-slate-500 mb-2">{name}</p>
-              <div className="rounded-md border border-slate-200 divide-y divide-slate-100">
-                {items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="text-sm text-slate-900 truncate">{item.date}</p>
-                      <p className="text-[11px] text-slate-500">{item.tier}</p>
+          {racerBreakdown.map((rb, ri) => (
+            <div key={rb.racer.id} className="rounded-xl border-2 border-slate-200 bg-white overflow-hidden">
+              {/* Racer header */}
+              <div className="px-3 py-2.5 bg-gradient-to-r from-slate-900 to-red-950 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 text-white text-[10px] font-black flex-shrink-0">
+                    #{ri + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate">{rb.name}</p>
+                    {rb.nickname && <p className="text-[10px] text-red-200 truncate">{rb.nickname}</p>}
+                  </div>
+                </div>
+                <p className="text-sm font-black text-white">{fmt(rb.subtotal)} ฿</p>
+              </div>
+
+              {/* Items breakdown */}
+              <div className="divide-y divide-slate-100">
+                {rb.items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2">
+                    <div className="min-w-0 flex items-center gap-2">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        item.isMain ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {item.isMain ? 'หลัก' : 'เพิ่ม'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-900 font-bold truncate">รุ่น {item.tier}</p>
+                        <p className="text-[10px] text-slate-500">{item.date}</p>
+                      </div>
                     </div>
-                    <p className="text-sm font-medium text-slate-900 ml-2">{fmt(item.price)} ฿</p>
+                    <p className="text-xs font-bold text-slate-900 ml-2 font-mono">{fmt(item.price)} ฿</p>
                   </div>
                 ))}
+              </div>
+
+              {/* Coupon per racer */}
+              <div className="border-t border-slate-100 p-3 bg-slate-50/50">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">โค้ดส่วนลด</p>
+                {rb.couponCode ? (
+                  <div className="flex items-center justify-between px-2.5 py-2 rounded-md border border-emerald-200 bg-emerald-50/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Tag className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" strokeWidth={2} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-emerald-900 font-mono">{rb.couponCode}</p>
+                        <p className="text-[10px] text-emerald-700">{rb.coupon.label}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs font-bold text-emerald-700">−{fmt(rb.discount)} ฿</span>
+                      <button onClick={() => removeCoupon(rb.racer.id)} className="text-slate-400 hover:text-red-600 p-0.5">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="กรอกโค้ด"
+                        value={couponInputs[rb.racer.id] || ''}
+                        onChange={e => setCouponInputs({ ...couponInputs, [rb.racer.id]: e.target.value })}
+                        onKeyDown={e => e.key === 'Enter' && applyCoupon(rb.racer.id)}
+                      />
+                      <Button variant="secondary" onClick={() => applyCoupon(rb.racer.id)}>ใช้</Button>
+                    </div>
+                    {couponMsgs[rb.racer.id] && (
+                      <p className={`text-[10px] mt-1 ${couponMsgs[rb.racer.id].ok ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {couponMsgs[rb.racer.id].msg}
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           ))}
 
-          <div className="pt-2">
-            <Label>โค้ดส่วนลด</Label>
-            {data.appliedCoupon ? (
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-md border border-emerald-200 bg-emerald-50/50">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Tag className="w-4 h-4 text-emerald-600 flex-shrink-0" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-emerald-900">{data.appliedCoupon}</p>
-                    <p className="text-[11px] text-emerald-700">{COUPONS[data.appliedCoupon].label}</p>
-                  </div>
-                </div>
-                <button onClick={removeCoupon} className="text-slate-400 hover:text-red-600 p-1">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="กรอกโค้ดส่วนลด"
-                    value={coupon}
-                    onChange={e => setCoupon(e.target.value)}
-                  />
-                  <Button variant="secondary" onClick={applyCoupon}>ใช้</Button>
-                </div>
-                {couponMsg && (
-                  <p className={`text-[11px] mt-1.5 ${couponMsg.startsWith('ใช้') ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {couponMsg}
-                  </p>
-                )}
-                <p className="text-[11px] text-slate-400 mt-1.5">ลองใช้: RACE100 · RACE10P · NEWBIE</p>
-              </>
-            )}
+          {/* Coupon hints */}
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+            <p className="text-[11px] font-bold text-blue-900 mb-1.5">💡 โค้ดส่วนลดที่มี (Demo)</p>
+            <div className="space-y-1 text-[11px] text-blue-800">
+              <p><span className="font-mono font-bold">GPRC10</span> · ลด 10% ทั้งหมดของนักแข่งคนนั้น</p>
+              <p><span className="font-mono font-bold">GPRCMAIN</span> · ฟรีรุ่นหลัก (รุ่นเพิ่มเติมยังคิดเงินตามปกติ)</p>
+            </div>
           </div>
         </div>
 
         <div className="lg:col-span-2">
           <div className="relative rounded-xl p-5 lg:sticky lg:top-4 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-red-950 text-white shadow-xl shadow-slate-900/20">
-            {/* speed lines decoration */}
             <div className="absolute -top-6 -right-6 w-24 h-24 bg-red-500/20 rounded-full blur-2xl pointer-events-none" aria-hidden="true" />
             <div className="relative">
               <p className="text-[10px] font-bold text-red-300 mb-3 uppercase tracking-widest flex items-center gap-1.5">
                 <Zap className="w-3 h-3" strokeWidth={2.5} />
                 ยอดที่ต้องชำระ
               </p>
-              <div className="space-y-1.5 text-sm">
+
+              {/* Per-racer mini summary */}
+              <div className="space-y-1.5 mb-3 max-h-40 overflow-y-auto">
+                {racerBreakdown.map((rb, ri) => (
+                  <div key={rb.racer.id} className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300 truncate flex-1">#{ri + 1} {rb.name}</span>
+                    <span className="text-white font-mono font-bold flex-shrink-0 ml-2">
+                      {rb.discount > 0 && <span className="text-red-300 text-[10px] mr-1">−{fmt(rb.discount)}</span>}
+                      {fmt(rb.total)} ฿
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-1.5 text-sm pt-2 border-t border-white/10">
                 <div className="flex justify-between text-slate-300">
                   <span>ยอดรวม</span>
-                  <span className="font-medium">{fmt(subtotal)} ฿</span>
+                  <span className="font-medium">{fmt(totalSubtotal)} ฿</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-300">ส่วนลด</span>
-                  <span className="font-medium text-red-300">−{fmt(discount)} ฿</span>
-                </div>
+                {totalDiscount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">ส่วนลดรวม</span>
+                    <span className="font-medium text-red-300">−{fmt(totalDiscount)} ฿</span>
+                  </div>
+                )}
                 <div className="border-t border-white/20 my-2.5"></div>
                 <div className="flex justify-between items-baseline">
                   <span className="text-xs text-slate-300">ยอดสุทธิ</span>
-                  <span className="text-3xl font-black text-white tracking-tight">{fmt(total)} <span className="text-base font-normal text-slate-300">฿</span></span>
+                  <span className="text-3xl font-black text-white tracking-tight">{fmt(totalNet)} <span className="text-base font-normal text-slate-300">฿</span></span>
                 </div>
               </div>
               <div className="border-t border-white/10 mt-3 pt-3 text-[11px] text-slate-400 leading-relaxed">
-                {lineItems.length} รายการ · นักแข่ง {racers.length} คน
+                {racerBreakdown.reduce((s, r) => s + r.items.length, 0)} รายการ · นักแข่ง {racers.length} คน
               </div>
             </div>
           </div>
@@ -1864,7 +2051,7 @@ function StepSummary({ racers, data, setData, next, prev }) {
         <Button variant="secondary" onClick={prev} className="flex-1">
           <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
         </Button>
-        <Button onClick={() => { setData({ ...data, finalTotal: total, subtotal, discount }); next(); }} className="flex-1">
+        <Button onClick={() => { setData({ ...data, finalTotal: totalNet, subtotal: totalSubtotal, discount: totalDiscount }); next(); }} className="flex-1">
           ไปหน้าชำระเงิน <ArrowRight className="w-4 h-4" />
         </Button>
       </div>
@@ -1985,22 +2172,19 @@ function StepSuccess({ racers, data, reset, onBackToHome }) {
 
   return (
     <Card>
-      <div className="max-w-md mx-auto">
-        {/* Success banner — รูปเดียวมีทั้ง trophy, mascot, badge */}
+      <div className="max-w-2xl mx-auto">
+        {/* Success banner */}
         <div className="-mx-5 sm:-mx-6 -mt-5 sm:-mt-6 mb-5 overflow-hidden rounded-t-2xl">
-          <img
-            src={SUCCESS_BANNER}
-            alt="สำเร็จแล้ว"
-            className="w-full h-auto block"
-          />
+          <img src={SUCCESS_BANNER} alt="สำเร็จแล้ว" className="w-full h-auto block" />
         </div>
 
         {/* Headline */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1.5 tracking-tight">เจอกันที่สนามแข่ง!</h2>
           <p className="text-sm text-slate-500">เราได้ส่งอีเมลยืนยันการลงทะเบียนไปยังอีเมลของท่านแล้ว</p>
         </div>
 
+        {/* Summary */}
         <div className="rounded-xl border-2 border-slate-200 p-4 text-left space-y-2 mb-5 bg-white">
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">เลขอ้างอิง</span>
@@ -2020,12 +2204,65 @@ function StepSuccess({ racers, data, reset, onBackToHome }) {
           </div>
         </div>
 
-        <div className="rounded-xl border-2 border-dashed border-red-200 p-4 mb-5 bg-red-50/30 text-center">
-          <p className="text-xs font-semibold text-red-600 mb-2 uppercase tracking-wide">QR Code ลงทะเบียน</p>
-          <div className="w-32 h-32 mx-auto bg-white border-2 border-slate-200 rounded-lg p-1.5 shadow-md">
-            <QRPattern />
+        {/* Per-racer QR cards */}
+        <div className="mb-5">
+          <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest mb-2 text-center">บัตรนักแข่ง · {racers.length} ใบ</p>
+          <p className="text-[11px] text-slate-500 text-center mb-3">📌 แต่ละนักแข่งมี QR Code ของตัวเอง · บันทึกไว้แสดงในวันแข่ง</p>
+          <div className={`grid gap-3 ${racers.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            {racers.map((r, ri) => {
+              const racerRefId = `${refId}-${String(ri + 1).padStart(2, '0')}`;
+              const items = [];
+              for (const did of r.selectedDates || []) {
+                const dateObj = RACE_DATES.find(d => d.id === did);
+                for (const tid of (r.selectedRaces?.[did] || [])) {
+                  const t = RACE_TIERS.find(x => x.id === tid);
+                  if (dateObj && t) items.push({ date: dateObj, tier: t });
+                }
+              }
+              const country = COUNTRIES.find(c => c.code === r.country) || COUNTRIES[0];
+              return (
+                <div key={r.id} className="rounded-xl border-2 border-red-200 overflow-hidden bg-white">
+                  {/* Card header */}
+                  <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-red-950 text-white p-3 relative overflow-hidden">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 bg-red-500/20 rounded-full blur-2xl pointer-events-none" />
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/10 text-[10px] font-black">
+                            #{ri + 1}
+                          </span>
+                          <span className="text-[9px] font-bold text-red-300 uppercase tracking-widest">นักแข่ง</span>
+                        </div>
+                        <span className="text-lg emoji-flag leading-none" title={country.name}>{country.flag}</span>
+                      </div>
+                      <p className="text-sm font-black truncate">{r.thFirstName} {r.thLastName}</p>
+                      <p className="text-[10px] text-white/60 truncate">{r.enFirstName} {r.enLastName}{r.nickname && ` · ${r.nickname}`}</p>
+                    </div>
+                  </div>
+                  {/* QR section */}
+                  <div className="p-3 text-center bg-white">
+                    <div className="w-28 h-28 mx-auto bg-white border-2 border-slate-200 rounded-lg p-1 shadow-sm mb-2">
+                      <QRPattern />
+                    </div>
+                    <p className="font-mono text-[10px] font-bold text-red-600">{racerRefId}</p>
+                  </div>
+                  {/* Items */}
+                  {items.length > 0 && (
+                    <div className="border-t border-slate-100 p-2 bg-slate-50/50 space-y-1">
+                      {items.map((item, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[10px]">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-white border border-slate-200 font-bold text-slate-700 flex-shrink-0">
+                            {item.date.short}
+                          </span>
+                          <span className="text-slate-700 truncate flex-1">รุ่น {item.tier.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">📌 แสดง QR นี้ต่อเจ้าหน้าที่ในวันแข่งขัน</p>
         </div>
 
         <div className="space-y-2">
@@ -2600,11 +2837,412 @@ function EventSelectModal({ open, onClose, events, onSelectEvent }) {
 }
 
 // ============================================================
+// USER SIDEBAR — navigation ระหว่างหน้าของ user หลัง login
+// ============================================================
+function UserSidebar({ currentView, onNavigate, user, racersCount, regsCount }) {
+  const items = [
+    { id: 'racers', label: 'นักแข่ง', icon: User, count: racersCount },
+    { id: 'history', label: 'ประวัติการลงทะเบียน', icon: FileIcon, count: regsCount },
+  ];
+  return (
+    <aside className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      {/* User card */}
+      <div className="p-4 bg-gradient-to-br from-slate-900 to-red-950 text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-base font-black shadow-md">
+            {(user?.username || 'U')[0].toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold truncate">{user?.username}</p>
+            <p className="text-[10px] text-white/60 truncate">{user?.email}</p>
+          </div>
+        </div>
+      </div>
+      {/* Menu */}
+      <nav className="p-2">
+        {items.map(it => {
+          const Icon = it.icon;
+          const active = currentView === it.id;
+          return (
+            <button
+              key={it.id}
+              onClick={() => onNavigate(it.id)}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition mb-1 ${
+                active ? 'bg-red-50 text-red-700' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <Icon className={`w-4 h-4 ${active ? 'text-red-600' : 'text-slate-400'}`} strokeWidth={1.75} />
+                {it.label}
+              </span>
+              <span className={`inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md text-[10px] font-black ${
+                active ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'
+              }`}>{it.count}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
+
+// ============================================================
+// MY RACERS PAGE — รายการนักแข่งที่ user เคยเพิ่ม
+// ============================================================
+function MyRacersPage({ racers, onAdd, onEdit, onDelete }) {
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">นักแข่งของฉัน</h1>
+          <p className="text-sm text-slate-500 mt-1">นักแข่งทั้งหมดที่บันทึกไว้ในระบบ · พร้อมใช้ลงทะเบียนการแข่งขัน</p>
+        </div>
+        <Button onClick={onAdd}>
+          <Plus className="w-4 h-4" /> เพิ่มนักแข่ง
+        </Button>
+      </div>
+
+      {racers.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center bg-white">
+          <div className="inline-flex w-16 h-16 rounded-full bg-slate-100 items-center justify-center mb-3">
+            <User className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 mb-1">ยังไม่มีนักแข่งในระบบ</h3>
+          <p className="text-sm text-slate-500 mb-4">เพิ่มข้อมูลนักแข่งเพื่อใช้ลงทะเบียนการแข่งขันได้รวดเร็ว</p>
+          <Button onClick={onAdd}>
+            <Plus className="w-4 h-4" /> เพิ่มนักแข่งคนแรก
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {racers.map((r, idx) => {
+            const country = COUNTRIES.find(c => c.code === r.country) || COUNTRIES[0];
+            let age = null;
+            if (r.birthDate) {
+              const birth = new Date(r.birthDate);
+              const now = new Date();
+              age = now.getFullYear() - birth.getFullYear();
+              const m = now.getMonth() - birth.getMonth();
+              if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+            }
+            return (
+              <div key={r.id} className="rounded-2xl border-2 border-slate-200 bg-white overflow-hidden hover:border-red-300 hover:shadow-lg transition-all group">
+                {/* Header: number badge + actions */}
+                <div className="px-4 py-3 bg-gradient-to-r from-slate-900 to-red-950 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 backdrop-blur-sm text-white text-xs font-black">
+                      #{idx + 1}
+                    </span>
+                    <span className="text-[10px] font-bold text-red-300 uppercase tracking-widest">นักแข่ง</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => onEdit(r)}
+                      className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition"
+                      title="แก้ไข"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => { if (confirm(`ลบ "${r.thFirstName} ${r.thLastName}"?`)) onDelete(r.id); }}
+                      className="p-1.5 rounded-md text-white/70 hover:text-red-300 hover:bg-red-500/20 transition"
+                      title="ลบ"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {/* Body */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-black text-slate-900 truncate leading-tight">
+                        {r.thFirstName} {r.thLastName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {r.enFirstName} {r.enLastName}
+                        {r.nickname && <span className="ml-1 text-slate-400">· {r.nickname}</span>}
+                      </p>
+                    </div>
+                    <span className="text-xl emoji-flag leading-none flex-shrink-0" title={country.name}>{country.flag}</span>
+                  </div>
+
+                  {/* meta tags */}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                      {r.gender === 'male' || r.gender === 'M' ? '👦 ชาย' : r.gender === 'female' || r.gender === 'F' ? '👧 หญิง' : '—'}
+                    </span>
+                    {age !== null && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                        {age} ปี
+                      </span>
+                    )}
+                    {r.shirtSize && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold">
+                        ไซส์ {r.shirtSize}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* team */}
+                  {r.teamName && (
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-2">
+                      <Flag className="w-3 h-3" strokeWidth={2} />
+                      <span className="truncate">{r.teamName}</span>
+                    </div>
+                  )}
+
+                  {/* annual member badge */}
+                  {r.isAnnualMember && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
+                      <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
+                      สมาชิกรายปี
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// RACER EDITOR MODAL — เพิ่ม/แก้ไขนักแข่ง (form แบบไม่มีรุ่น/วันแข่ง)
+// ============================================================
+function RacerEditorModal({ open, onClose, racer, onSave }) {
+  const [r, setR] = useState(null);
+  const [err, setErr] = useState('');
+  const [annualMemberOpen, setAnnualMemberOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setR(racer ? { ...racer } : newRacer());
+      setErr('');
+    }
+  }, [open, racer]);
+
+  if (!r) return null;
+  const update = (patch) => setR({ ...r, ...patch });
+  const ageYM = calcAgeYM(r.birthDate);
+
+  const submit = () => {
+    if (!r.thFirstName || !r.thLastName || !r.enFirstName || !r.enLastName) {
+      return setErr('กรุณากรอกชื่อ-นามสกุลให้ครบ');
+    }
+    if (!r.birthDate) return setErr('กรุณาเลือกวันเกิด');
+    if (!r.gender) return setErr('กรุณาเลือกเพศ');
+    if (!r.shirtSize) return setErr('กรุณาเลือกไซส์เสื้อ');
+    if (!r.country) return setErr('กรุณาเลือกประเทศ');
+    setErr('');
+    onSave(r);
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={racer ? 'แก้ไขนักแข่ง' : 'เพิ่มนักแข่งใหม่'}
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label required>ชื่อ (ไทย)</Label>
+            <Input value={r.thFirstName} onChange={e => update({ thFirstName: e.target.value })} />
+          </div>
+          <div>
+            <Label required>นามสกุล (ไทย)</Label>
+            <Input value={r.thLastName} onChange={e => update({ thLastName: e.target.value })} />
+          </div>
+          <div>
+            <Label required>First name</Label>
+            <Input value={r.enFirstName} onChange={e => update({ enFirstName: e.target.value })} />
+          </div>
+          <div>
+            <Label required>Last name</Label>
+            <Input value={r.enLastName} onChange={e => update({ enLastName: e.target.value })} />
+          </div>
+          <div>
+            <Label>ชื่อเล่น</Label>
+            <Input placeholder="เช่น น้องเอ" value={r.nickname || ''} onChange={e => update({ nickname: e.target.value })} />
+          </div>
+          <div>
+            <Label required>ประเทศ</Label>
+            <CountrySelect value={r.country || 'TH'} onChange={code => update({ country: code })} />
+          </div>
+          <div>
+            <Label required>เพศ</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <GenderOption active={r.gender === 'male' || r.gender === 'M'} onClick={() => update({ gender: 'male' })} label="ชาย" />
+              <GenderOption active={r.gender === 'female' || r.gender === 'F'} onClick={() => update({ gender: 'female' })} label="หญิง" />
+            </div>
+          </div>
+          <div>
+            <Label required>วันเดือนปีเกิด</Label>
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <Input
+                  icon={Calendar}
+                  type="date"
+                  value={r.birthDate}
+                  onChange={e => update({ birthDate: e.target.value })}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              {r.birthDate && (
+                <div className="h-10 px-2.5 rounded-md bg-slate-100 border border-slate-200 flex items-center text-[11px] font-medium text-slate-700 whitespace-nowrap">
+                  {ageYM.years} ปี {ageYM.months} ด.
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <Label required>ไซส์เสื้อ</Label>
+            <div className="grid grid-cols-7 gap-1">
+              {SHIRT_SIZES.map(size => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => update({ shirtSize: size })}
+                  className={`h-10 text-xs font-bold rounded-md border-2 transition ${
+                    r.shirtSize === size ? 'border-red-600 bg-red-50 text-red-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>ชื่อทีม / สังกัด</Label>
+            <Input icon={Flag} placeholder="เช่น Bangkok Runbike Club" value={r.teamName || ''} onChange={e => update({ teamName: e.target.value })} />
+          </div>
+        </div>
+
+        {/* Annual member checkbox */}
+        <Divider />
+        <div className="rounded-xl border-2 border-amber-200 bg-amber-50/40 p-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!r.isAnnualMember}
+              onChange={e => {
+                const v = e.target.checked;
+                if (v) {
+                  // เปิด popup ตรวจสอบก่อน
+                  setAnnualMemberOpen(true);
+                } else {
+                  update({ isAnnualMember: false, annualMemberId: null });
+                }
+              }}
+              className="w-4 h-4 mt-0.5 accent-amber-600 cursor-pointer"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-900 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" strokeWidth={2.5} />
+                เป็นสมาชิกรายปี
+              </p>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                สมาชิกรายปีจะได้รับสิทธิพิเศษและส่วนลดการแข่งขัน
+              </p>
+              {r.isAnnualMember && r.annualMemberId && (
+                <p className="text-[10px] font-mono font-bold text-amber-800 mt-1">
+                  ✓ ยืนยันแล้ว · ID: {r.annualMemberId}
+                </p>
+              )}
+            </div>
+          </label>
+        </div>
+
+        {err && <Alert>{err}</Alert>}
+
+        <div className="flex gap-2 pt-2">
+          <Button variant="secondary" onClick={onClose} className="flex-1">ยกเลิก</Button>
+          <Button onClick={submit} className="flex-1">
+            <Check className="w-4 h-4" /> บันทึก
+          </Button>
+        </div>
+      </div>
+
+      {/* Annual member verification modal */}
+      <AnnualMemberVerifyModal
+        open={annualMemberOpen}
+        onClose={() => setAnnualMemberOpen(false)}
+        onVerified={(memberId) => {
+          update({ isAnnualMember: true, annualMemberId: memberId });
+          setAnnualMemberOpen(false);
+        }}
+      />
+    </Modal>
+  );
+}
+
+// Annual member verification — popup ตรวจสอบสมาชิก
+function AnnualMemberVerifyModal({ open, onClose, onVerified }) {
+  const [identifier, setIdentifier] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => { if (open) { setIdentifier(''); setErr(''); setChecking(false); } }, [open]);
+
+  const verify = () => {
+    if (!identifier.trim()) return setErr('กรุณากรอกอีเมลหรือเบอร์โทร');
+    setErr('');
+    setChecking(true);
+    // Mock: รออ 0.8 วินาที แล้ว approve (demo)
+    setTimeout(() => {
+      setChecking(false);
+      // demo: ทุก identifier ถือว่าเจอ → gen member ID
+      const memberId = 'MEM-' + String(Math.floor(Math.random() * 900000) + 100000);
+      onVerified(memberId);
+    }, 800);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="ตรวจสอบสมาชิกรายปี">
+      <div className="space-y-3">
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+          <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" strokeWidth={2} />
+          <div className="text-xs text-amber-800">
+            <p className="font-bold">ตรวจสอบสถานะสมาชิกรายปี</p>
+            <p className="mt-0.5">กรุณากรอกอีเมลหรือเบอร์โทรที่ใช้สมัครสมาชิก เพื่อตรวจสอบกับฐานข้อมูล</p>
+          </div>
+        </div>
+        <div>
+          <Label required>อีเมล หรือ เบอร์โทรศัพท์</Label>
+          <Input
+            icon={Mail}
+            placeholder="email@example.com หรือ 08X-XXX-XXXX"
+            value={identifier}
+            onChange={e => setIdentifier(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && verify()}
+          />
+        </div>
+        {err && <Alert>{err}</Alert>}
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose} className="flex-1">ยกเลิก</Button>
+          <Button onClick={verify} disabled={checking} className="flex-1">
+            {checking ? 'กำลังตรวจสอบ...' : 'ตรวจสอบ'}
+            {!checking && <ArrowRight className="w-4 h-4" />}
+          </Button>
+        </div>
+        <p className="text-[10px] text-slate-400 text-center">💡 Demo: ทุก identifier จะผ่านการตรวจสอบ</p>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================
 // HISTORY PAGE
 // ============================================================
-function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSelectRegistration }) {
+function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSelectRegistration, embedded }) {
+  const wrapperClass = embedded ? '' : 'max-w-4xl mx-auto px-4 sm:px-6 py-8';
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <div className={wrapperClass}>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">ประวัติการลงทะเบียน</h1>
@@ -3890,6 +4528,8 @@ function App() {
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState('login');
   const [registrations, setRegistrations] = useState([]);
+  const [savedRacers, setSavedRacers] = useState([]); // นักแข่งที่เซฟไว้ใน profile ของ user
+  const [racerEditor, setRacerEditor] = useState({ open: false, racer: null }); // เปิด/ปิด modal เพิ่ม-แก้ไขนักแข่ง
   const [checkIns, setCheckIns] = useState([]);
   const [qrModal, setQrModal] = useState({ open: false, registration: null, racer: null });
   const [eventSelectOpen, setEventSelectOpen] = useState(false);
@@ -4025,8 +4665,16 @@ function App() {
         },
       ];
       setRegistrations(mockRegistrations);
+      // savedRacers: เอานักแข่งที่เคย register แล้วเก็บใน profile
+      const uniqueRacers = new Map();
+      mockRegistrations.forEach(reg => {
+        reg.racers.forEach(racer => {
+          if (!uniqueRacers.has(racer.id)) uniqueRacers.set(racer.id, racer);
+        });
+      });
+      setSavedRacers(Array.from(uniqueRacers.values()));
     }
-    setView('history');
+    setView('racers'); // เปลี่ยน default landing หลัง login → หน้า "นักแข่ง"
   };
 
   const handleLogout = () => {
@@ -4057,12 +4705,32 @@ function App() {
       id: Date.now(),
       refId: 'REG-' + Date.now().toString().slice(-8),
       date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+      eventId: data.eventId || null,
       racers: racers,
       totalItems: racers.reduce((s, r) => s + Object.values(r.selectedRaces || {}).reduce((a, b) => a + b.length, 0), 0),
       total: data.finalTotal,
     };
     setRegistrations([newReg, ...registrations]);
+    // Sync savedRacers — เพิ่มนักแข่งที่ใหม่ลงใน profile
+    const existingIds = new Set(savedRacers.map(r => r.id));
+    const newOnes = racers.filter(r => !existingIds.has(r.id));
+    if (newOnes.length > 0) setSavedRacers([...savedRacers, ...newOnes]);
     setView('history');
+  };
+
+  // CRUD savedRacers
+  const handleSaveRacer = (racer) => {
+    if (racer.id && savedRacers.some(r => r.id === racer.id)) {
+      // update
+      setSavedRacers(savedRacers.map(r => r.id === racer.id ? racer : r));
+    } else {
+      // create
+      setSavedRacers([...savedRacers, { ...racer, id: racer.id || (Date.now() + Math.random()) }]);
+    }
+    setRacerEditor({ open: false, racer: null });
+  };
+  const handleDeleteRacer = (racerId) => {
+    setSavedRacers(savedRacers.filter(r => r.id !== racerId));
   };
 
   const isAdminView = view === 'admin-dashboard' || view === 'admin-checkin';
@@ -4138,23 +4806,57 @@ function App() {
                     startStep={user ? 2 : 1}
                     prefillUser={user}
                     selectedEvent={selectedEvent}
+                    savedRacers={savedRacers}
                   />
                 </div>
               </div>
             )}
 
-            {view === 'history' && user && (
-              <HistoryPage
-                user={user}
-                registrations={registrations}
-                onRegisterClick={() => setEventSelectOpen(true)}
-                onBackToHome={() => setView('landing')}
-                onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
-              />
+            {(view === 'history' || view === 'racers') && user && (
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5 lg:gap-6">
+                  <div className="lg:sticky lg:top-24 lg:self-start">
+                    <UserSidebar
+                      currentView={view}
+                      onNavigate={setView}
+                      user={user}
+                      racersCount={savedRacers.length}
+                      regsCount={registrations.length}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    {view === 'racers' && (
+                      <MyRacersPage
+                        racers={savedRacers}
+                        onAdd={() => setRacerEditor({ open: true, racer: null })}
+                        onEdit={(r) => setRacerEditor({ open: true, racer: r })}
+                        onDelete={handleDeleteRacer}
+                      />
+                    )}
+                    {view === 'history' && (
+                      <HistoryPage
+                        user={user}
+                        registrations={registrations}
+                        onRegisterClick={() => setEventSelectOpen(true)}
+                        onBackToHome={() => setView('landing')}
+                        onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
+                        embedded
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </main>
         </div>
       )}
+
+      <RacerEditorModal
+        open={racerEditor.open}
+        onClose={() => setRacerEditor({ open: false, racer: null })}
+        racer={racerEditor.racer}
+        onSave={handleSaveRacer}
+      />
 
       <LoginModal
         open={loginOpen}
@@ -4189,7 +4891,7 @@ function App() {
 // ============================================================
 // MAIN APP (multi-step registration flow)
 // ============================================================
-function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent }) {
+function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent, savedRacers = [] }) {
   const [step, setStep] = useState(startStep);
   const [data, setData] = useState({
     username: prefillUser?.username || '',
@@ -4260,7 +4962,7 @@ function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser
       {step <= 5 && <ProgressBar current={step} />}
 
       {step === 1 && <StepAccount data={data} setData={setData} next={next} />}
-      {step === 2 && <StepRacers racers={racers} setRacers={setRacers} next={next} prev={step > startStep ? prev : null} />}
+      {step === 2 && <StepRacers racers={racers} setRacers={setRacers} savedRacers={savedRacers} next={next} prev={step > startStep ? prev : null} />}
       {step === 3 && <StepGuardian data={data} setData={setData} next={next} prev={prev} />}
       {step === 4 && <StepSummary racers={racers} data={data} setData={setData} next={next} prev={prev} />}
       {step === 5 && <StepPayment data={data} next={next} prev={prev} />}

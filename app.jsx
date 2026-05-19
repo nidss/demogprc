@@ -1042,6 +1042,28 @@ function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
       <Header icon={Flag} title="ข้อมูลนักแข่ง" subtitle="กรอกข้อมูล เลือกวัน และเลือกรุ่นที่จะลงแข่ง" />
 
       <div className="space-y-3">
+        {/* Top banner: เลือกจากที่บันทึกไว้ */}
+        {availableSaved.length > 0 && (
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="w-full p-3 rounded-xl border-2 border-red-200 bg-gradient-to-r from-red-50 to-red-50/50 hover:border-red-400 hover:from-red-100 hover:to-red-50 text-left transition group flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center flex-shrink-0 shadow-md shadow-red-500/30">
+              <User className="w-5 h-5 text-white" strokeWidth={2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-red-900 flex items-center gap-1.5">
+                เลือกจากนักแข่งที่บันทึกไว้
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md bg-red-600 text-white text-[10px] font-black">
+                  {availableSaved.length}
+                </span>
+              </p>
+              <p className="text-[11px] text-red-700 mt-0.5">ใช้ข้อมูลจากเมนู "ข้อมูลนักแข่ง" ที่บันทึกไว้ — ประหยัดเวลา ไม่ต้องกรอกใหม่</p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-red-400 group-hover:text-red-700 group-hover:translate-x-0.5 transition flex-shrink-0" />
+          </button>
+        )}
+
         {racers.map((r, idx) => (
           <RacerCard
             key={r.id}
@@ -1053,30 +1075,13 @@ function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
           />
         ))}
 
-        {availableSaved.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setPickerOpen(true)}
-              className="h-11 border-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-red-700 text-sm font-bold rounded-md inline-flex items-center justify-center gap-1.5 transition"
-            >
-              <User className="w-4 h-4" /> เลือกจากที่บันทึกไว้
-              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-700 text-[10px] font-black">{availableSaved.length}</span>
-            </button>
-            <button
-              onClick={addRacer}
-              className="h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
-            >
-              <Plus className="w-4 h-4" /> เพิ่มใหม่
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={addRacer}
-            className="w-full h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
-          >
-            <Plus className="w-4 h-4" /> เพิ่มนักแข่งอีกคน
-          </button>
-        )}
+        <button
+          onClick={addRacer}
+          className="w-full h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
+        >
+          <Plus className="w-4 h-4" /> เพิ่มนักแข่งอีกคน
+        </button>
+
 
         {err && <Alert>{err}</Alert>}
 
@@ -3140,6 +3145,18 @@ function MyRacersPage({ racers, onAdd, onEdit, onDelete }) {
                               <span className="truncate">{r.teamName}</span>
                             </span>
                           )}
+                          {r.documents && r.documents.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-100 text-green-700 text-[10px] font-bold">
+                              <FileIcon className="w-2.5 h-2.5" strokeWidth={2.5} />
+                              เอกสาร {r.documents.length} ไฟล์
+                            </span>
+                          )}
+                          {(!r.documents || r.documents.length === 0) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                              <Upload className="w-2.5 h-2.5" strokeWidth={2.5} />
+                              ยังไม่มีเอกสาร
+                            </span>
+                          )}
                           {r.isAnnualMember && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
                               <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
@@ -3207,6 +3224,7 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
     if (!r.gender) return setErr('กรุณาเลือกเพศ');
     if (!r.shirtSize) return setErr('กรุณาเลือกไซส์เสื้อ');
     if (!r.country) return setErr('กรุณาเลือกประเทศ');
+    if (!r.documents || r.documents.length === 0) return setErr('กรุณาอัปโหลดเอกสารยืนยันตัวตนอย่างน้อย 1 ไฟล์');
     setErr('');
     onSave(r);
   };
@@ -3290,6 +3308,17 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
             <Label>ชื่อทีม / สังกัด</Label>
             <Input icon={Flag} placeholder="เช่น Bangkok Runbike Club" value={r.teamName || ''} onChange={e => update({ teamName: e.target.value })} />
           </div>
+        </div>
+
+        {/* Documents — เอกสารยืนยันตัวตน */}
+        <Divider />
+        <div>
+          <Label required>เอกสารยืนยันตัวตน</Label>
+          <p className="text-[11px] text-slate-500 mb-2">อัปโหลดสูติบัตร / บัตรประชาชน / หนังสือเดินทาง (รับ JPG, PNG, PDF · สูงสุด 5MB ต่อไฟล์)</p>
+          <DocumentUpload
+            files={r.documents || []}
+            onChange={docs => update({ documents: docs })}
+          />
         </div>
 
         {/* Annual member checkbox */}

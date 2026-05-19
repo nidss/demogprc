@@ -2801,12 +2801,102 @@ function LoginModal({ open, onClose, onLogin, defaultMode = 'login' }) {
   const [form, setForm] = useState({ identifier: '', password: '', email: '', username: '', phone: '', confirmPassword: '' });
   const [err, setErr] = useState('');
 
-  useEffect(() => { setMode(defaultMode); setErr(''); }, [defaultMode, open]);
+  // Forgot password flow state
+  const [forgotPhase, setForgotPhase] = useState('request'); // request | otp | reset | success
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
+  const [forgotNewPwd, setForgotNewPwd] = useState('');
+  const [forgotConfirmPwd, setForgotConfirmPwd] = useState('');
+  const [forgotCountdown, setForgotCountdown] = useState(0);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const forgotOtpRefs = useRef([]);
+
+  useEffect(() => {
+    setMode(defaultMode);
+    setErr('');
+    // reset forgot state ตอนเปิด modal
+    setForgotPhase('request');
+    setForgotEmail('');
+    setForgotOtp(['', '', '', '', '', '']);
+    setForgotNewPwd('');
+    setForgotConfirmPwd('');
+    setForgotCountdown(0);
+  }, [defaultMode, open]);
+
+  useEffect(() => {
+    if (forgotCountdown <= 0) return;
+    const t = setTimeout(() => setForgotCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [forgotCountdown]);
+
+  const goForgot = () => {
+    setMode('forgot');
+    setForgotPhase('request');
+    setErr('');
+  };
+
+  const submitForgotRequest = () => {
+    if (!forgotEmail) return setErr('กรุณากรอกอีเมล');
+    if (!/\S+@\S+\.\S+/.test(forgotEmail)) return setErr('รูปแบบอีเมลไม่ถูกต้อง');
+    setErr('');
+    setForgotLoading(true);
+    setTimeout(() => {
+      setForgotLoading(false);
+      setForgotPhase('otp');
+      setForgotCountdown(60);
+      // auto-focus ช่องแรก
+      setTimeout(() => forgotOtpRefs.current[0]?.focus(), 50);
+    }, 800);
+  };
+
+  const handleOtpInput = (i, v) => {
+    if (v && !/^\d$/.test(v)) return;
+    const next = [...forgotOtp];
+    next[i] = v.slice(-1);
+    setForgotOtp(next);
+    if (v && i < 5) forgotOtpRefs.current[i + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (i, e) => {
+    if (e.key === 'Backspace' && !forgotOtp[i] && i > 0) {
+      forgotOtpRefs.current[i - 1]?.focus();
+    }
+  };
+
+  const submitForgotOtp = () => {
+    const code = forgotOtp.join('');
+    if (code.length !== 6) return setErr('กรุณากรอก OTP ให้ครบ 6 หลัก');
+    setErr('');
+    setForgotLoading(true);
+    setTimeout(() => {
+      setForgotLoading(false);
+      setForgotPhase('reset');
+    }, 600);
+  };
+
+  const resendOtp = () => {
+    if (forgotCountdown > 0) return;
+    setForgotOtp(['', '', '', '', '', '']);
+    setForgotCountdown(60);
+    setErr('');
+    setTimeout(() => forgotOtpRefs.current[0]?.focus(), 50);
+  };
+
+  const submitForgotReset = () => {
+    if (!forgotNewPwd || !forgotConfirmPwd) return setErr('กรุณากรอกรหัสผ่านทั้ง 2 ช่อง');
+    if (forgotNewPwd.length < 8) return setErr('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
+    if (forgotNewPwd !== forgotConfirmPwd) return setErr('รหัสผ่านไม่ตรงกัน');
+    setErr('');
+    setForgotLoading(true);
+    setTimeout(() => {
+      setForgotLoading(false);
+      setForgotPhase('success');
+    }, 800);
+  };
 
   const submitLogin = () => {
     if (!form.identifier || !form.password) return setErr('กรุณากรอกอีเมล/ชื่อผู้ใช้ และรหัสผ่าน');
     setErr('');
-    // demo: เข้าได้ทุกอันที่กรอก
     onLogin({
       username: form.identifier.includes('@') ? form.identifier.split('@')[0] : form.identifier,
       email: form.identifier.includes('@') ? form.identifier : `${form.identifier}@example.com`,
@@ -2824,34 +2914,42 @@ function LoginModal({ open, onClose, onLogin, defaultMode = 'login' }) {
     onClose();
   };
 
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
-    >
-      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
-        <button
-          type="button"
-          onClick={() => { setMode('login'); setErr(''); }}
-          className={`flex-1 h-9 text-sm font-semibold rounded-md transition-all ${
-            mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          เข้าสู่ระบบ
-        </button>
-        <button
-          type="button"
-          onClick={() => { setMode('register'); setErr(''); }}
-          className={`flex-1 h-9 text-sm font-semibold rounded-md transition-all ${
-            mode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          สมัครสมาชิก
-        </button>
-      </div>
+  // กำหนด title แบบ dynamic
+  const modalTitle =
+    mode === 'forgot' ? (
+      forgotPhase === 'request' ? 'ลืมรหัสผ่าน' :
+      forgotPhase === 'otp' ? 'ยืนยัน OTP' :
+      forgotPhase === 'reset' ? 'ตั้งรหัสผ่านใหม่' :
+      'เสร็จสมบูรณ์'
+    ) : (mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก');
 
-      {mode === 'login' ? (
+  return (
+    <Modal open={open} onClose={onClose} title={modalTitle}>
+      {/* Toggle tabs — ซ่อนตอนอยู่ forgot mode */}
+      {mode !== 'forgot' && (
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
+          <button
+            type="button"
+            onClick={() => { setMode('login'); setErr(''); }}
+            className={`flex-1 h-9 text-sm font-semibold rounded-md transition-all ${
+              mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            เข้าสู่ระบบ
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('register'); setErr(''); }}
+            className={`flex-1 h-9 text-sm font-semibold rounded-md transition-all ${
+              mode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            สมัครสมาชิก
+          </button>
+        </div>
+      )}
+
+      {mode === 'login' && (
         <div className="space-y-3">
           <div>
             <Label required>อีเมลหรือชื่อผู้ใช้</Label>
@@ -2867,7 +2965,7 @@ function LoginModal({ open, onClose, onLogin, defaultMode = 'login' }) {
               <label className="text-xs font-medium text-slate-600">
                 รหัสผ่าน <span className="text-red-500 ml-0.5">*</span>
               </label>
-              <button type="button" className="text-[11px] text-red-600 hover:underline font-medium">ลืมรหัสผ่าน?</button>
+              <button type="button" onClick={goForgot} className="text-[11px] text-red-600 hover:underline font-medium">ลืมรหัสผ่าน?</button>
             </div>
             <Input icon={Lock} type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
           </div>
@@ -2877,7 +2975,164 @@ function LoginModal({ open, onClose, onLogin, defaultMode = 'login' }) {
           </Button>
           <p className="text-[11px] text-slate-400 text-center">💡 Demo: ใส่อะไรก็เข้าได้</p>
         </div>
-      ) : (
+      )}
+
+      {mode === 'forgot' && (
+        <div className="space-y-3">
+          {/* Step indicator */}
+          {forgotPhase !== 'success' && (
+            <div className="flex items-center gap-1 mb-1">
+              {['request', 'otp', 'reset'].map((p, i) => {
+                const order = ['request', 'otp', 'reset'].indexOf(forgotPhase);
+                const active = i === order;
+                const done = i < order;
+                return (
+                  <React.Fragment key={p}>
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black transition ${
+                      active ? 'bg-red-600 text-white shadow shadow-red-600/30' :
+                      done ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {done ? <Check className="w-3 h-3" strokeWidth={3} /> : i + 1}
+                    </div>
+                    {i < 2 && <div className={`flex-1 h-0.5 ${done ? 'bg-green-600' : 'bg-slate-200'}`} />}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+
+          {forgotPhase === 'request' && (
+            <>
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 flex items-start gap-2">
+                <Mail className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                <div className="text-xs text-blue-900">
+                  <p className="font-bold">รีเซ็ตรหัสผ่าน</p>
+                  <p className="mt-0.5 text-blue-700">กรอกอีเมลที่ใช้สมัครสมาชิก ระบบจะส่ง OTP สำหรับยืนยันตัวตน</p>
+                </div>
+              </div>
+              <div>
+                <Label required>อีเมล</Label>
+                <Input
+                  icon={Mail}
+                  type="email"
+                  placeholder="email@example.com"
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitForgotRequest()}
+                />
+              </div>
+              {err && <Alert>{err}</Alert>}
+              <div className="flex gap-2 pt-1">
+                <Button variant="secondary" onClick={() => { setMode('login'); setErr(''); }} className="flex-1">
+                  <ArrowLeft className="w-4 h-4" /> กลับ
+                </Button>
+                <Button onClick={submitForgotRequest} disabled={forgotLoading} className="flex-1">
+                  {forgotLoading ? 'กำลังส่ง...' : <>ส่ง OTP <ArrowRight className="w-4 h-4" /></>}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {forgotPhase === 'otp' && (
+            <>
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                <div className="text-xs text-amber-900">
+                  <p className="font-bold">ส่ง OTP ไปยังอีเมลแล้ว</p>
+                  <p className="mt-0.5 text-amber-700">{forgotEmail}</p>
+                </div>
+              </div>
+              <div>
+                <Label required>รหัส OTP (6 หลัก)</Label>
+                <div className="flex gap-1.5 justify-center">
+                  {forgotOtp.map((d, i) => (
+                    <input
+                      key={i}
+                      ref={el => forgotOtpRefs.current[i] = el}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={d}
+                      onChange={e => handleOtpInput(i, e.target.value)}
+                      onKeyDown={e => handleOtpKeyDown(i, e)}
+                      className="w-11 h-12 text-center text-lg font-black rounded-md border-2 border-slate-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition"
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="text-center text-[11px] text-slate-500">
+                {forgotCountdown > 0 ? (
+                  <>ขอ OTP ใหม่ใน <span className="font-mono font-bold text-slate-700">{forgotCountdown}s</span></>
+                ) : (
+                  <button onClick={resendOtp} className="text-red-600 hover:underline font-medium">ขอ OTP ใหม่</button>
+                )}
+              </div>
+              {err && <Alert>{err}</Alert>}
+              <div className="flex gap-2 pt-1">
+                <Button variant="secondary" onClick={() => { setForgotPhase('request'); setErr(''); }} className="flex-1">
+                  <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+                </Button>
+                <Button onClick={submitForgotOtp} disabled={forgotLoading} className="flex-1">
+                  {forgotLoading ? 'กำลังตรวจสอบ...' : <>ยืนยัน <ArrowRight className="w-4 h-4" /></>}
+                </Button>
+              </div>
+              <p className="text-[10px] text-slate-400 text-center">💡 Demo: กรอกตัวเลข 6 หลัก อะไรก็ได้</p>
+            </>
+          )}
+
+          {forgotPhase === 'reset' && (
+            <>
+              <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-start gap-2">
+                <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                <div className="text-xs text-green-900">
+                  <p className="font-bold">ยืนยันตัวตนสำเร็จ</p>
+                  <p className="mt-0.5 text-green-700">ตั้งรหัสผ่านใหม่ของคุณได้เลย</p>
+                </div>
+              </div>
+              <div>
+                <Label required>รหัสผ่านใหม่</Label>
+                <Input
+                  icon={Lock}
+                  type="password"
+                  placeholder="อย่างน้อย 8 ตัวอักษร"
+                  value={forgotNewPwd}
+                  onChange={e => setForgotNewPwd(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label required>ยืนยันรหัสผ่านใหม่</Label>
+                <Input
+                  icon={Lock}
+                  type="password"
+                  placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+                  value={forgotConfirmPwd}
+                  onChange={e => setForgotConfirmPwd(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitForgotReset()}
+                />
+              </div>
+              {err && <Alert>{err}</Alert>}
+              <Button onClick={submitForgotReset} disabled={forgotLoading} className="w-full">
+                {forgotLoading ? 'กำลังบันทึก...' : <><Check className="w-4 h-4" /> บันทึกรหัสผ่านใหม่</>}
+              </Button>
+            </>
+          )}
+
+          {forgotPhase === 'success' && (
+            <div className="text-center py-2">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 mb-3 shadow-lg shadow-green-500/30">
+                <Check className="w-8 h-8 text-white" strokeWidth={3} />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 mb-1">รีเซ็ตรหัสผ่านสำเร็จ!</h3>
+              <p className="text-sm text-slate-500 mb-5">คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้แล้ว</p>
+              <Button onClick={() => { setMode('login'); setErr(''); }} className="w-full">
+                <ArrowLeft className="w-4 h-4" /> กลับไปเข้าสู่ระบบ
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === 'register' && (
         <div className="space-y-3">
           <div>
             <Label required>ชื่อผู้ใช้</Label>

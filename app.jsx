@@ -4125,123 +4125,64 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
         <KpiCard label="เช็คอินแล้ว" value={checkInCount} unit={`${checkInRate}%`} icon={Check} trend={`${checkInRate}%`} color="from-amber-500 to-amber-700" trendIsRate />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Registration table */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900">
-              การลงทะเบียน
-              {selectedEventId !== 'all' && currentEvent && (
-                <span className="ml-2 text-xs text-slate-500 font-normal">— {currentEvent.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}</span>
-              )}
-            </h2>
-            <span className="text-[10px] text-slate-400">{totalRegs} รายการ</span>
-          </div>
-          {filteredRegs.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีการลงทะเบียนใน event นี้</div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {filteredRegs.slice(0, 8).map((reg, i) => {
-                const ev = EVENTS.find(e => e.id === reg.eventId);
-                const regCheckIns = checkIns.filter(c => c.refId === reg.refId).length;
-                const checkInPct = reg.racers.length > 0 ? Math.round((regCheckIns / reg.racers.length) * 100) : 0;
-                return (
-                  <button
-                    key={reg.id}
-                    onClick={() => setDetailReg(reg)}
-                    className="w-full px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition group text-left"
-                  >
-                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-slate-900 font-mono">{reg.refId}</p>
-                        {ev && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[9px] font-bold uppercase tracking-wider">
-                            {ev.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
-                          </span>
-                        )}
-                        {regCheckIns > 0 && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-50 border border-green-100 text-green-700 text-[9px] font-bold">
-                            <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                            {regCheckIns}/{reg.racers.length} เช็คอิน
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 truncate">{reg.racers.length} นักแข่ง · {reg.totalItems} รายการ · {reg.date}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                      <span className="text-sm font-black text-red-600">{fmt(reg.total)} ฿</span>
-                      <span className="text-[10px] text-slate-400 group-hover:text-red-600 inline-flex items-center gap-0.5 transition">
-                        ดูรายละเอียด <ArrowRight className="w-2.5 h-2.5" />
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900">แยกตาม Event</h2>
-            </div>
-            <div className="p-4 space-y-3">
-              {eventStats.map(evt => {
-                const pct = Math.round((evt.racersCount / evt.capacity) * 100);
-                const checkInPct = evt.racersCount > 0 ? Math.round((evt.checkInsCount / evt.racersCount) * 100) : 0;
-                const isActive = selectedEventId === evt.id;
-                return (
-                  <button
-                    key={evt.id}
-                    onClick={() => setSelectedEventId(isActive ? 'all' : evt.id)}
-                    className={`w-full text-left rounded-lg p-2 -m-2 transition ${isActive ? 'bg-red-50' : 'hover:bg-slate-50'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className={`text-xs font-bold truncate flex-1 ${isActive ? 'text-red-700' : 'text-slate-900'}`}>{evt.title}</p>
-                      <span className="text-xs font-mono font-bold text-slate-900 ml-2">{evt.racersCount}/{evt.capacity}</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {evt.regsCount} การลงทะเบียน · เช็คอิน {evt.checkInsCount}/{evt.racersCount} ({checkInPct}%)
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <button
-            onClick={() => onNavigate('admin-checkin')}
-            className="w-full rounded-2xl p-5 bg-gradient-to-br from-slate-900 to-red-950 text-white text-left hover:shadow-xl transition-all group overflow-hidden relative"
-          >
-            <div className="absolute -top-4 -right-4 w-24 h-24 bg-red-500/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="relative">
-              <Flag className="w-6 h-6 text-red-300 mb-2" strokeWidth={2} />
-              <p className="text-xs font-bold text-red-300 uppercase tracking-widest mb-1">เริ่มงาน</p>
-              <p className="text-lg font-black tracking-tight mb-1">Check-in หน้างาน</p>
-              <p className="text-xs text-white/60">สแกน QR Code เพื่อบันทึกการเข้าร่วม</p>
-              <p className="inline-flex items-center gap-1 text-xs font-bold text-white mt-3 group-hover:gap-2 transition-all">
-                ไปยังหน้า Check-in <ArrowRight className="w-3.5 h-3.5" />
-              </p>
-            </div>
-          </button>
-        </div>
+      {/* Registration table — full width */}
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden mb-5">
+        <RegistrationsTable
+          registrations={filteredRegs}
+          checkIns={checkIns}
+          eventLabel={selectedEventId === 'all' ? null : (currentEvent ? (currentEvent.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026') : null)}
+        />
       </div>
 
-      {/* Detail modal */}
-      <RegistrationDetailModal
-        open={!!detailReg}
-        onClose={() => setDetailReg(null)}
-        registration={detailReg}
-        checkIns={checkIns}
-      />
+      {/* Sidebar bottom */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-900">แยกตาม Event</h2>
+          </div>
+          <div className="p-4 space-y-3">
+            {eventStats.map(evt => {
+              const pct = Math.round((evt.racersCount / evt.capacity) * 100);
+              const checkInPct = evt.racersCount > 0 ? Math.round((evt.checkInsCount / evt.racersCount) * 100) : 0;
+              const isActive = selectedEventId === evt.id;
+              return (
+                <button
+                  key={evt.id}
+                  onClick={() => setSelectedEventId(isActive ? 'all' : evt.id)}
+                  className={`w-full text-left rounded-lg p-2 -m-2 transition ${isActive ? 'bg-red-50' : 'hover:bg-slate-50'}`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className={`text-xs font-bold truncate flex-1 ${isActive ? 'text-red-700' : 'text-slate-900'}`}>{evt.title}</p>
+                    <span className="text-xs font-mono font-bold text-slate-900 ml-2">{evt.racersCount}/{evt.capacity}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {evt.regsCount} การลงทะเบียน · เช็คอิน {evt.checkInsCount}/{evt.racersCount} ({checkInPct}%)
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          onClick={() => onNavigate('admin-checkin')}
+          className="w-full rounded-2xl p-5 bg-gradient-to-br from-slate-900 to-red-950 text-white text-left hover:shadow-xl transition-all group overflow-hidden relative"
+        >
+          <div className="absolute -top-4 -right-4 w-24 h-24 bg-red-500/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative">
+            <Flag className="w-6 h-6 text-red-300 mb-2" strokeWidth={2} />
+            <p className="text-xs font-bold text-red-300 uppercase tracking-widest mb-1">เริ่มงาน</p>
+            <p className="text-lg font-black tracking-tight mb-1">Check-in หน้างาน</p>
+            <p className="text-xs text-white/60">สแกน QR Code เพื่อบันทึกการเข้าร่วม</p>
+            <p className="inline-flex items-center gap-1 text-xs font-bold text-white mt-3 group-hover:gap-2 transition-all">
+              ไปยังหน้า Check-in <ArrowRight className="w-3.5 h-3.5" />
+            </p>
+          </div>
+        </button>
+      </div>
     </div>
   );
 }
@@ -4274,6 +4215,290 @@ function EventTab({ active, onClick, label, sublabel, count, isFeatured }) {
 }
 
 // Registration detail modal — แสดงข้อมูลครบของการลงทะเบียน
+// ============================================================
+// REGISTRATIONS TABLE — table view ของ registrations (flatten by racer)
+// ============================================================
+function RegistrationsTable({ registrations, checkIns, eventLabel }) {
+  const [search, setSearch] = useState('');
+  const [filterGender, setFilterGender] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterAge, setFilterAge] = useState('all');
+  const [sortBy, setSortBy] = useState('date-desc');
+
+  // flatten registrations → 1 row per racer
+  const rows = useMemo(() => {
+    const out = [];
+    registrations.forEach(reg => {
+      reg.racers.forEach(racer => {
+        let age = null;
+        if (racer.birthDate) {
+          const birth = new Date(racer.birthDate);
+          const now = new Date();
+          age = now.getFullYear() - birth.getFullYear();
+          const m = now.getMonth() - birth.getMonth();
+          if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+        }
+        const mainTiers = [];
+        const additionalTiers = [];
+        (racer.selectedDates || []).forEach(did => {
+          (racer.selectedRaces?.[did] || []).forEach(tid => {
+            const t = RACE_TIERS.find(x => x.id === tid);
+            if (!t) return;
+            if (t.group === 'standard') {
+              if (!mainTiers.includes(t.label)) mainTiers.push(t.label);
+            } else {
+              if (!additionalTiers.includes(t.label)) additionalTiers.push(t.label);
+            }
+          });
+        });
+        const isCheckedIn = checkIns.some(c => c.refId === reg.refId && c.racerId === racer.id);
+        const checkInRecord = checkIns.find(c => c.refId === reg.refId && c.racerId === racer.id);
+
+        out.push({
+          regId: reg.id, refId: reg.refId, date: reg.date,
+          dateRaw: reg.dateRaw || reg.date,
+          eventId: reg.eventId,
+          racerId: racer.id,
+          fullName: `${racer.thFirstName} ${racer.thLastName}`,
+          nickname: racer.nickname || '-',
+          gender: racer.gender, age, birthDate: racer.birthDate,
+          mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
+          additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
+          isCheckedIn, checkInTime: checkInRecord?.time,
+          shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
+        });
+      });
+    });
+    return out;
+  }, [registrations, checkIns]);
+
+  const filteredRows = useMemo(() => {
+    let result = [...rows];
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter(r =>
+        r.fullName.toLowerCase().includes(q) ||
+        r.nickname.toLowerCase().includes(q) ||
+        r.refId.toLowerCase().includes(q)
+      );
+    }
+    if (filterGender !== 'all') result = result.filter(r => r.gender === filterGender);
+    if (filterStatus === 'checked') result = result.filter(r => r.isCheckedIn);
+    else if (filterStatus === 'pending') result = result.filter(r => !r.isCheckedIn);
+    if (filterAge !== 'all') {
+      const ageRanges = {
+        'u5': (a) => a !== null && a < 5,
+        '5-8': (a) => a !== null && a >= 5 && a < 8,
+        '8-12': (a) => a !== null && a >= 8 && a < 12,
+        '12+': (a) => a !== null && a >= 12,
+      };
+      const fn = ageRanges[filterAge];
+      if (fn) result = result.filter(r => fn(r.age));
+    }
+    if (sortBy === 'date-desc') result.sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));
+    else if (sortBy === 'date-asc') result.sort((a, b) => new Date(a.dateRaw) - new Date(b.dateRaw));
+    else if (sortBy === 'name') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
+    return result;
+  }, [rows, search, filterGender, filterStatus, filterAge, sortBy]);
+
+  const exportExcel = () => {
+    if (typeof window.XLSX === 'undefined') {
+      alert('ระบบ Export กำลังโหลด กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+    const exportRows = filteredRows.map((r, i) => ({
+      'ลำดับ': i + 1,
+      'วันที่ลงทะเบียน': r.date,
+      'เลขอ้างอิง': r.refId,
+      'ชื่อ-นามสกุล': r.fullName,
+      'ชื่อเล่น': r.nickname,
+      'เพศ': r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-',
+      'อายุ': r.age !== null ? r.age + ' ปี' : '-',
+      'รุ่นที่แข่ง (หลัก)': r.mainTiers,
+      'รุ่นที่แข่ง (เพิ่ม)': r.additionalTiers,
+      'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
+      'Event': r.eventId === 'evt1' ? 'RUN BIKE' : 'GPRC 2026',
+      'ไซส์เสื้อ': r.shirtSize || '-',
+      'ประเทศ': r.country || '-',
+      'ทีม': r.teamName || '-',
+    }));
+    const ws = window.XLSX.utils.json_to_sheet(exportRows);
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 14 },
+      { wch: 8 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
+      { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 22 },
+    ];
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'การลงทะเบียน');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    window.XLSX.writeFile(wb, `registrations-${dateStr}.xlsx`);
+  };
+
+  const checkedCount = filteredRows.filter(r => r.isCheckedIn).length;
+
+  return (
+    <>
+      <div className="px-4 sm:px-5 py-4 border-b border-slate-100">
+        <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">
+              ตารางการลงทะเบียน
+              {eventLabel && <span className="ml-2 text-xs text-slate-500 font-normal">— {eventLabel}</span>}
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              พบ <span className="font-bold text-slate-900">{filteredRows.length}</span> รายการ ·
+              เช็คอินแล้ว <span className="font-bold text-green-700">{checkedCount}</span> ·
+              รอเช็คอิน <span className="font-bold text-amber-700">{filteredRows.length - checkedCount}</span>
+            </p>
+          </div>
+          <button
+            onClick={exportExcel}
+            disabled={filteredRows.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition disabled:bg-slate-300 disabled:cursor-not-allowed shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Export Excel
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="col-span-2 sm:col-span-2">
+            <Input
+              placeholder="🔍 ค้นหาชื่อ / ชื่อเล่น / เลขอ้างอิง"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <select value={filterGender} onChange={e => setFilterGender(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกเพศ</option>
+            <option value="M">ชาย</option>
+            <option value="F">หญิง</option>
+          </select>
+          <select value={filterAge} onChange={e => setFilterAge(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกอายุ</option>
+            <option value="u5">น้อยกว่า 5 ปี</option>
+            <option value="5-8">5 - 7 ปี</option>
+            <option value="8-12">8 - 11 ปี</option>
+            <option value="12+">12 ปีขึ้นไป</option>
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกสถานะ</option>
+            <option value="checked">เช็คอินแล้ว</option>
+            <option value="pending">รอเช็คอิน</option>
+          </select>
+        </div>
+
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-[11px] text-slate-500">เรียง:</span>
+          <div className="flex gap-1 p-0.5 bg-slate-100 rounded-md">
+            {[
+              { id: 'date-desc', label: 'ล่าสุด' },
+              { id: 'date-asc', label: 'เก่าสุด' },
+              { id: 'name', label: 'ชื่อ A-Z' },
+            ].map(s => (
+              <button key={s.id} onClick={() => setSortBy(s.id)} className={`px-2.5 h-6 text-[11px] font-medium rounded transition ${
+                sortBy === s.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        {filteredRows.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+              <tr>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">เลขอ้างอิง</th>
+                <th className="px-3 py-2.5 text-left">ชื่อ-นามสกุล</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อเล่น</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">เพศ</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">อายุ</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นหลัก</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นเพิ่ม</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">เช็คอิน</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredRows.slice(0, 100).map(r => {
+                const ev = EVENTS.find(e => e.id === r.eventId);
+                return (
+                  <tr key={`${r.regId}-${r.racerId}`} className="hover:bg-slate-50 transition">
+                    <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-slate-600">{r.date}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-xs text-slate-900">{r.refId}</span>
+                        {ev && (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            ev.id === 'evt1' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'
+                          }`}>
+                            {ev.id === 'evt1' ? 'RUN' : 'GPRC'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <p className="text-sm font-bold text-slate-900 truncate max-w-[180px]">{r.fullName}</p>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{r.nickname}</td>
+                    <td className="px-3 py-2.5 text-center text-xs">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        r.gender === 'M' ? 'bg-blue-50 text-blue-700' : r.gender === 'F' ? 'bg-pink-50 text-pink-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center text-xs font-bold text-slate-900 whitespace-nowrap">{r.age !== null ? `${r.age} ปี` : '-'}</td>
+                    <td className="px-3 py-2.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold">
+                        {r.mainTiers}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {r.additionalTiers !== '-' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold">
+                          {r.additionalTiers}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {r.isCheckedIn ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold">
+                          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                          {r.checkInTime}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                          รอเช็คอิน
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+        {filteredRows.length > 100 && (
+          <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500 text-center">
+            แสดง 100 รายการแรกจาก {filteredRows.length} รายการ · กด Export Excel เพื่อดูทั้งหมด
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 function RegistrationDetailModal({ open, onClose, registration, checkIns }) {
   if (!registration) return null;
   const ev = EVENTS.find(e => e.id === registration.eventId);
@@ -4457,9 +4682,10 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
-  const [eventFilter, setEventFilter] = useState('all'); // 'all' | event.id
-  const [racerFilter, setRacerFilter] = useState('all'); // 'all' | 'checked' | 'pending'
+  const [eventFilter, setEventFilter] = useState('all');
+  const [racerFilter, setRacerFilter] = useState('all');
   const [racerSearch, setRacerSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('scan'); // scan | list
 
   useEffect(() => { setRecentCheckIns(checkIns); }, [checkIns]);
 
@@ -4518,13 +4744,43 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const quickFillSamples = registrations.flatMap(r => r.racers.map(racer => ({ refId: r.refId, name: `${racer.thFirstName} ${racer.thLastName}` }))).slice(0, 3);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="mb-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-5">
         <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">เริ่มงานหน้าสนาม</p>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Check-in หน้างาน</h1>
         <p className="text-sm text-slate-500 mt-1">สแกน QR Code ของผู้แข่งเพื่อบันทึกการเข้าร่วม</p>
       </div>
 
+      {/* Tabs */}
+      <div className="mb-5 border-b border-slate-200 flex gap-1">
+        <button
+          onClick={() => setActiveTab('scan')}
+          className={`relative px-4 py-2.5 text-sm font-bold transition flex items-center gap-1.5 ${
+            activeTab === 'scan' ? 'text-red-600' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Flag className="w-4 h-4" strokeWidth={2} />
+          สแกน QR
+          {activeTab === 'scan' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />}
+        </button>
+        <button
+          onClick={() => setActiveTab('list')}
+          className={`relative px-4 py-2.5 text-sm font-bold transition flex items-center gap-1.5 ${
+            activeTab === 'list' ? 'text-red-600' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <User className="w-4 h-4" strokeWidth={2} />
+          ผู้สมัครทั้งหมด
+          <span className={`inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md text-[10px] font-black ${
+            activeTab === 'list' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'
+          }`}>
+            {registrations.reduce((s, r) => s + r.racers.length, 0)}
+          </span>
+          {activeTab === 'list' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />}
+        </button>
+      </div>
+
+      {activeTab === 'scan' && (
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         <div className="lg:col-span-3">
           <div className="rounded-2xl bg-white border-2 border-slate-200 overflow-hidden">
@@ -4683,9 +4939,10 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
           </div>
         </div>
       </div>
+      )}
 
-      {/* All registered racers — รายชื่อทั้งหมด */}
-      <div className="mt-6 rounded-2xl bg-white border border-slate-200 overflow-hidden">
+      {activeTab === 'list' && (
+      <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
         <div className="px-4 sm:px-5 py-4 border-b border-slate-100">
           <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
             <div>
@@ -4893,6 +5150,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
           );
         })()}
       </div>
+      )}
     </div>
   );
 }
@@ -4926,32 +5184,141 @@ function App() {
     setAdmin(adminData);
     // โหลด mock registrations ถ้ายังไม่มี เพื่อให้ admin มีข้อมูลให้ดู
     if (registrations.length === 0) {
-      const mock = [
-        {
-          id: Date.now() - 2000000, refId: 'REG-20260301', date: '1 มี.ค. 2569', eventId: 'evt2',
-          racers: [
-            { id: 'R001', thFirstName: 'ภูริชญา', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Phurichaya', enLastName: 'Chanphen', nickname: 'น้องฟ้า', gender: 'F', birthDate: '2020-08-12', shirtSize: 'S', country: 'TH', teamName: 'Bangkok Runbike Club', selectedDates: ['D1', 'D3'], selectedRaces: { D1: ['U3'], D3: ['GS'] } },
-            { id: 'R002', thFirstName: 'ธีรภัทร', thLastName: 'จันทร์เพ็ญ', enFirstName: 'Teerapat', enLastName: 'Chanphen', nickname: 'น้องเต้', gender: 'M', birthDate: '2022-03-25', shirtSize: 'XS', country: 'TH', teamName: 'Bangkok Runbike Club', selectedDates: ['D1', 'D2'], selectedRaces: { D1: ['U2'], D2: ['OJ'] } },
-          ],
-          totalItems: 4, total: 2800,
-        },
-        {
-          id: Date.now() - 1500000, refId: 'REG-20260315', date: '15 มี.ค. 2569', eventId: 'evt1',
-          racers: [
-            { id: 'R003', thFirstName: 'อนุภัทร', thLastName: 'วงศ์สว่าง', enFirstName: 'Anupat', enLastName: 'Wongsawang', nickname: 'น้องอนุ', gender: 'M', birthDate: '2018-11-30', shirtSize: 'M', country: 'TH', teamName: 'Chiang Mai Speedy', selectedDates: ['D5', 'D7'], selectedRaces: { D5: ['U5'], D7: ['OP'] } },
-          ],
-          totalItems: 2, total: 2000,
-        },
-        {
-          id: Date.now() - 1000000, refId: 'REG-20260420', date: '20 เม.ย. 2569', eventId: 'evt2',
-          racers: [
-            { id: 'R004', thFirstName: 'นภัสสร', thLastName: 'ศรีสุวรรณ', enFirstName: 'Naphatsorn', enLastName: 'Srisuwan', nickname: 'น้องนัส', gender: 'F', birthDate: '2019-06-18', shirtSize: 'S', country: 'TH', teamName: '', selectedDates: ['D2'], selectedRaces: { D2: ['U4'] } },
-            { id: 'R005', thFirstName: 'กิตติพงษ์', thLastName: 'ศรีสุวรรณ', enFirstName: 'Kittipong', enLastName: 'Srisuwan', nickname: 'น้องโตโน่', gender: 'M', birthDate: '2017-09-05', shirtSize: 'L', country: 'LA', teamName: 'Lao Runners', selectedDates: ['D2', 'D4'], selectedRaces: { D2: ['U6'], D4: ['OS'] } },
-          ],
-          totalItems: 3, total: 2400,
-        },
-      ];
+      // Helper สร้าง mock — กระจาย event, gender, age, รุ่น, สถานะเช็คอิน
+      const firstNamesM = ['ธีรภัทร', 'อนุภัทร', 'กิตติพงษ์', 'ภานุวัฒน์', 'ปัณณวิชญ์', 'พีรพัฒน์', 'สรวิชญ์', 'ณภัทร', 'ชวินธร', 'รัชชานนท์'];
+      const firstNamesF = ['ภูริชญา', 'นภัสสร', 'พิมพ์ลภัส', 'ปวริศา', 'ธัญชนก', 'กชกร', 'อนัญญา', 'พิชญาภา', 'ลภัสรดา', 'จิรชยา'];
+      const lastNames = ['จันทร์เพ็ญ', 'วงศ์สว่าง', 'ศรีสุวรรณ', 'พรหมจรรย์', 'แก้วใส', 'ดวงดี', 'มั่นคง', 'รุ่งเรือง', 'กิจสำราญ', 'ไกรเกียรติ'];
+      const nicknamesM = ['น้องเต้', 'น้องอนุ', 'น้องโตโน่', 'น้องภู', 'น้องปัณ', 'น้องพี', 'น้องวิช', 'น้องณ', 'น้องชิน', 'น้องนนท์'];
+      const nicknamesF = ['น้องฟ้า', 'น้องนัส', 'น้องพิม', 'น้องมุก', 'น้องพลอย', 'น้องเอม', 'น้องมิ้น', 'น้องแพร', 'น้องลภัส', 'น้องจี'];
+      const teams = ['Bangkok Runbike Club', 'Chiang Mai Speedy', 'Phuket Riders', 'Pattaya Junior Racing', 'Korat Speed Team', 'Hat Yai Champions', '', '', 'Lao Runners', 'Singapore Riders'];
+      const enFirstM = ['Teerapat', 'Anupat', 'Kittipong', 'Phanuwat', 'Pannawit', 'Peeraphat', 'Sorawit', 'Naphat', 'Chawinthorn', 'Ratchanon'];
+      const enFirstF = ['Phurichaya', 'Naphatsorn', 'Pimlapat', 'Pawarisa', 'Thanchanok', 'Kotchakorn', 'Ananya', 'Pitchayapa', 'Lapassarada', 'Jirachaya'];
+      const enLast = ['Chanphen', 'Wongsawang', 'Srisuwan', 'Promchan', 'Kaewsai', 'Duangdee', 'Mankong', 'Rungrueang', 'Kitsamran', 'Kraikiat'];
+      const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+      const countries = ['TH', 'TH', 'TH', 'TH', 'TH', 'TH', 'TH', 'LA', 'SG', 'MY']; // weight TH
+
+      // ฟังก์ชันสุ่ม
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      const pickIdx = (arr, i) => arr[i % arr.length];
+
+      // กำหนด tier ตาม birthYear (ใช้ logic เดียวกับ getEligibleTiers)
+      const tierByBirthYear = (y, gender) => {
+        const now = new Date();
+        const ageYears = now.getFullYear() - y;
+        if (ageYears >= 3 && ageYears <= 4) return 'U1';
+        if (ageYears >= 4 && ageYears <= 5) return 'U2';
+        if (ageYears >= 5 && ageYears <= 6) return 'U3';
+        if (ageYears >= 6 && ageYears <= 7) return 'U4';
+        if (ageYears >= 7 && ageYears <= 10) return 'U5';
+        if (ageYears >= 10 && ageYears <= 13) return 'U6';
+        return 'U7';
+      };
+
+      // generate 20 registrations
+      const mock = [];
+      const allRacerIds = [];
+      for (let i = 0; i < 20; i++) {
+        const isMale = Math.random() > 0.45;
+        const numRacers = Math.random() < 0.3 ? 2 : 1; // 30% มี 2 นักแข่ง
+        const eventId = Math.random() > 0.4 ? 'evt2' : 'evt1';
+
+        const regRacers = [];
+        let regTotal = 0;
+        let regTotalItems = 0;
+
+        for (let j = 0; j < numRacers; j++) {
+          const racerIsMale = j === 0 ? isMale : Math.random() > 0.5;
+          const birthYear = 2014 + Math.floor(Math.random() * 9); // 2014-2022
+          const birthMonth = String(1 + Math.floor(Math.random() * 12)).padStart(2, '0');
+          const birthDay = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0');
+          const birthDate = `${birthYear}-${birthMonth}-${birthDay}`;
+          const mainTier = tierByBirthYear(birthYear, racerIsMale ? 'male' : 'female');
+          // 40% มีรุ่นเพิ่มเติม (Open)
+          const hasOpen = Math.random() < 0.4;
+          const openTier = hasOpen ? (racerIsMale ? pick(['OJ', 'OS', 'OP']) : pick(['GJ', 'GS', 'GP', 'OJ', 'OS', 'OP'])) : null;
+
+          // จำนวนวันที่ลง (1-2 วัน)
+          const numDays = Math.random() < 0.3 ? 2 : 1;
+          const allDays = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'];
+          const selectedDates = [];
+          for (let k = 0; k < numDays; k++) {
+            const day = pick(allDays);
+            if (!selectedDates.includes(day)) selectedDates.push(day);
+          }
+
+          // กำหนดรุ่นต่อวัน
+          const selectedRaces = {};
+          selectedDates.forEach((day, dIdx) => {
+            if (dIdx === 0) {
+              // วันแรก: มีหลัก + อาจมีเพิ่ม
+              selectedRaces[day] = openTier ? [mainTier, openTier] : [mainTier];
+            } else {
+              selectedRaces[day] = [mainTier];
+            }
+          });
+
+          // คำนวณราคา rough
+          const itemsCount = Object.values(selectedRaces).reduce((s, arr) => s + arr.length, 0);
+          const racerPrice = itemsCount * 700; // rough
+
+          const racerId = `R${String(allRacerIds.length + 1).padStart(3, '0')}`;
+          allRacerIds.push(racerId);
+
+          regRacers.push({
+            id: racerId,
+            thFirstName: racerIsMale ? pickIdx(firstNamesM, i + j) : pickIdx(firstNamesF, i + j),
+            thLastName: pickIdx(lastNames, i + j),
+            enFirstName: racerIsMale ? pickIdx(enFirstM, i + j) : pickIdx(enFirstF, i + j),
+            enLastName: pickIdx(enLast, i + j),
+            nickname: racerIsMale ? pickIdx(nicknamesM, i + j) : pickIdx(nicknamesF, i + j),
+            gender: racerIsMale ? 'M' : 'F',
+            birthDate,
+            shirtSize: pick(sizes),
+            country: pick(countries),
+            teamName: pick(teams),
+            selectedDates,
+            selectedRaces,
+          });
+          regTotal += racerPrice;
+          regTotalItems += itemsCount;
+        }
+
+        // วันที่ลงทะเบียน (ย้อนหลัง 1-60 วัน)
+        const daysAgo = Math.floor(Math.random() * 60) + 1;
+        const regDate = new Date(Date.now() - daysAgo * 86400000);
+        const dateStr = regDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        mock.push({
+          id: Date.now() - i * 100000,
+          refId: 'REG-' + String(20260100 + i).slice(0, 8),
+          date: dateStr,
+          dateRaw: regDate.toISOString(),
+          eventId,
+          racers: regRacers,
+          totalItems: regTotalItems,
+          total: regTotal,
+        });
+      }
       setRegistrations(mock);
+
+      // mock check-ins — สุ่ม 30% เช็คอินแล้ว
+      const mockCheckIns = [];
+      mock.forEach(reg => {
+        reg.racers.forEach(racer => {
+          if (Math.random() < 0.3) {
+            mockCheckIns.push({
+              id: Date.now() + Math.random(),
+              refId: reg.refId,
+              racerId: racer.id,
+              racerName: `${racer.thFirstName} ${racer.thLastName}`,
+              eventId: reg.eventId,
+              time: `${String(Math.floor(Math.random() * 5) + 7).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+              date: reg.date,
+            });
+          }
+        });
+      });
+      setCheckIns(mockCheckIns);
     }
     setView('admin-dashboard');
   };

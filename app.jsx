@@ -982,12 +982,21 @@ function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
     // copy ของจาก savedRacers แต่ reset เลือกวัน/รุ่น (เพราะของเดิมเป็นข้อมูลเก่า)
     const copy = {
       ...savedRacer,
-      // keep ข้อมูลตัวบุคคล แต่ reset เลือกการแข่ง
       selectedDates: [],
       selectedRaces: {},
       documents: savedRacer.documents || [],
     };
-    setRacers([...racers, copy]);
+    // หา index ของนักแข่งคนที่ยังว่าง (ยังไม่กรอกชื่อ) ที่จะถูกแทนที่
+    const emptyIdx = racers.findIndex(r => !r.thFirstName && !r.thLastName && !r.enFirstName && !r.enLastName);
+    if (emptyIdx !== -1) {
+      // แทนที่คนที่ว่างอยู่
+      const next = [...racers];
+      next[emptyIdx] = copy;
+      setRacers(next);
+    } else {
+      // ไม่มีคนว่าง — append ตามปกติ
+      setRacers([...racers, copy]);
+    }
     setPickerOpen(false);
   };
   const removeRacer = (id) => {

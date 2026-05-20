@@ -4971,6 +4971,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
+  const [giftReceived, setGiftReceived] = useState({}); // { '${refId}-${racerId}': true }
   const [eventFilter, setEventFilter] = useState('all');
   const [racerFilter, setRacerFilter] = useState('all');
   const [racerSearch, setRacerSearch] = useState('');
@@ -5011,35 +5012,35 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
     }, 400);
   };
 
-  const confirmCheckIn = () => {
-    if (!foundRacer || foundRacer.alreadyCheckedIn) return;
-    // หาวันแรกที่นักแข่งคนนี้ยังไม่ได้เช็คอิน
-    const racerSelectedDates = foundRacer.racer.selectedDates || [];
-    const alreadyCheckedDates = new Set(
-      recentCheckIns
-        .filter(c => c.refId === foundRacer.reg.refId && c.racerId === foundRacer.racer.id)
-        .map(c => c.dateId)
+  const confirmCheckInForDate = (dateId) => {
+    if (!foundRacer || !dateId) return;
+    // เช็คซ้ำ — ถ้าวันนี้เช็คอินแล้วไม่ทำซ้ำ
+    const alreadyToday = recentCheckIns.some(c =>
+      c.refId === foundRacer.reg.refId &&
+      c.racerId === foundRacer.racer.id &&
+      c.dateId === dateId
     );
-    const nextDateId = racerSelectedDates.find(d => !alreadyCheckedDates.has(d)) || racerSelectedDates[0];
-    const dateObj = RACE_DATES.find(d => d.id === nextDateId);
+    if (alreadyToday) return;
 
+    const dateObj = RACE_DATES.find(d => d.id === dateId);
     const checkInRecord = {
       id: Date.now(),
       refId: foundRacer.reg.refId,
       racerId: foundRacer.racer.id,
       racerName: `${foundRacer.racer.thFirstName} ${foundRacer.racer.thLastName}`,
       eventId: foundRacer.reg.eventId,
-      dateId: nextDateId,
+      dateId,
       time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       date: dateObj?.short || new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
     };
     onCheckIn(checkInRecord);
     setRecentCheckIns([checkInRecord, ...recentCheckIns]);
-    setFoundRacer({ ...foundRacer, alreadyCheckedIn: true });
-    setTimeout(() => {
-      setScanInput('');
-      setFoundRacer(null);
-    }, 2000);
+  };
+
+  const toggleGift = () => {
+    if (!foundRacer) return;
+    const key = `${foundRacer.reg.refId}-${foundRacer.racer.id}`;
+    setGiftReceived({ ...giftReceived, [key]: !giftReceived[key] });
   };
 
   const quickFillSamples = registrations.flatMap(r => r.racers.map(racer => ({ refId: r.refId, name: `${racer.thFirstName} ${racer.thLastName}` }))).slice(0, 3);
@@ -5143,19 +5144,54 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
             </div>
           </div>
 
-          {foundRacer && (
-            <div className={`mt-4 rounded-2xl overflow-hidden border-2 ${foundRacer.alreadyCheckedIn ? 'border-amber-300' : 'border-green-300'} bg-white`}>
-              <div className={`px-4 py-3 ${foundRacer.alreadyCheckedIn ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-800'} flex items-center justify-between`}>
+          {foundRacer && (() => {
+            // คำนวณวันที่เช็คอินแล้วของนักแข่งคนนี้
+            const checkedDateIds = new Set(
+              recentCheckIns
+                .filter(c => c.refId === foundRacer.reg.refId && c.racerId === foundRacer.racer.id)
+                .map(c => c.dateId)
+            );
+            // สร้าง list ของรายการแข่ง = วัน × รุ่น
+            const items = [];
+            (foundRacer.racer.selectedDates || []).forEach(did => {
+              const dateObj = RACE_DATES.find(d => d.id === did);
+              (foundRacer.racer.selectedRaces?.[did] || []).forEach(tid => {
+                const t = RACE_TIERS.find(x => x.id === tid);
+                if (dateObj && t) {
+                  items.push({ did, dateObj, tier: t });
+                }
+              });
+            });
+            // group by date
+            const itemsByDate = {};
+            items.forEach(item => {
+              if (!itemsByDate[item.did]) itemsByDate[item.did] = { dateObj: item.dateObj, tiers: [] };
+              itemsByDate[item.did].tiers.push(item.tier);
+            });
+            const dateGroups = Object.entries(itemsByDate).map(([did, val]) => ({ did, ...val }));
+
+            const allChecked = dateGroups.every(g => checkedDateIds.has(g.did));
+            const checkedCount = dateGroups.filter(g => checkedDateIds.has(g.did)).length;
+            const giftKey = `${foundRacer.reg.refId}-${foundRacer.racer.id}`;
+            const giftIsReceived = !!giftReceived[giftKey];
+
+            return (
+            <div className={`mt-4 rounded-2xl overflow-hidden border-2 ${allChecked ? 'border-amber-300' : 'border-green-300'} bg-white`}>
+              <div className={`px-4 py-3 ${allChecked ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-800'} flex items-center justify-between`}>
                 <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full ${foundRacer.alreadyCheckedIn ? 'bg-amber-600' : 'bg-green-600'} flex items-center justify-center`}>
+                  <div className={`w-7 h-7 rounded-full ${allChecked ? 'bg-amber-600' : 'bg-green-600'} flex items-center justify-center`}>
                     <Check className="w-4 h-4 text-white" strokeWidth={3} />
                   </div>
                   <div>
                     <p className="text-sm font-black">
-                      {foundRacer.alreadyCheckedIn ? 'นักแข่งเช็คอินแล้ว' : 'พบข้อมูลนักแข่ง'}
+                      {allChecked ? 'เช็คอินครบทุกวันแล้ว' : 'พบข้อมูลนักแข่ง'}
                     </p>
                     <p className="text-[11px]">
-                      {foundRacer.alreadyCheckedIn ? 'ตรวจสอบรายการด้านล่าง' : 'ตรวจสอบและกดยืนยันการเช็คอิน'}
+                      {allChecked
+                        ? 'นักแข่งคนนี้เช็คอินทุกรายการแล้ว'
+                        : checkedCount > 0
+                          ? `เช็คอินแล้ว ${checkedCount}/${dateGroups.length} วัน · กดเช็คอินวันที่เหลือด้านล่าง`
+                          : 'กดที่รายการแข่งเพื่อยืนยันการเช็คอิน'}
                     </p>
                   </div>
                 </div>
@@ -5173,36 +5209,116 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                     <p className="text-xs text-slate-500">ลงทะเบียน {foundRacer.reg.date}</p>
                   </div>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3 mb-4">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">รายการแข่ง</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(foundRacer.racer.selectedDates || []).map(did => {
-                      const dateObj = RACE_DATES.find(d => d.id === did);
-                      const tiers = (foundRacer.racer.selectedRaces?.[did] || []).map(tid => {
-                        const t = RACE_TIERS.find(x => x.id === tid);
-                        return t?.label;
-                      }).filter(Boolean);
-                      return tiers.map((label, ti) => (
-                        <span key={did + ti} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-700">
-                          <Calendar className="w-2.5 h-2.5" strokeWidth={2} />
-                          {dateObj?.short} · รุ่น {label}
-                        </span>
-                      ));
+
+                {/* รายการแข่ง — กดได้ */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">รายการแข่ง</p>
+                    <p className="text-[10px] text-slate-500">กดเพื่อเช็คอิน</p>
+                  </div>
+                  <div className="space-y-2">
+                    {dateGroups.map(g => {
+                      const isChecked = checkedDateIds.has(g.did);
+                      const checkRecord = recentCheckIns.find(c =>
+                        c.refId === foundRacer.reg.refId &&
+                        c.racerId === foundRacer.racer.id &&
+                        c.dateId === g.did
+                      );
+                      return (
+                        <button
+                          key={g.did}
+                          onClick={() => !isChecked && confirmCheckInForDate(g.did)}
+                          disabled={isChecked}
+                          className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all group ${
+                            isChecked
+                              ? 'border-green-300 bg-green-50 cursor-default'
+                              : 'border-slate-200 bg-white hover:border-red-400 hover:bg-red-50/50 hover:shadow-md cursor-pointer active:scale-[0.99]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Status icon */}
+                            <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex-shrink-0 transition ${
+                              isChecked
+                                ? 'bg-green-600 text-white'
+                                : 'bg-slate-100 text-slate-500 group-hover:bg-red-600 group-hover:text-white'
+                            }`}>
+                              {isChecked ? (
+                                <Check className="w-5 h-5" strokeWidth={3} />
+                              ) : (
+                                <Calendar className="w-5 h-5" strokeWidth={2} />
+                              )}
+                            </div>
+                            {/* Date + tiers info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-base font-black text-slate-900">{g.dateObj.short}</p>
+                                {isChecked && checkRecord && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 border border-green-200 text-green-700 text-[10px] font-bold">
+                                    <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                                    {checkRecord.time}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {g.tiers.map((t, ti) => (
+                                  <span key={ti} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    t.group === 'standard'
+                                      ? 'bg-red-50 text-red-700 border border-red-100'
+                                      : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                  }`}>
+                                    รุ่น {t.label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Action label */}
+                            {!isChecked && (
+                              <div className="flex-shrink-0 hidden sm:flex items-center gap-1 text-xs font-bold text-slate-400 group-hover:text-red-600 transition">
+                                เช็คอิน
+                                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
                     })}
                   </div>
                 </div>
-                {!foundRacer.alreadyCheckedIn ? (
-                  <Button onClick={confirmCheckIn} className="w-full">
-                    <Check className="w-4 h-4" /> ยืนยันการเช็คอิน
-                  </Button>
-                ) : (
-                  <div className="text-center text-xs text-amber-700 font-medium py-2">
-                    ✓ นักแข่งคนนี้ได้เช็คอินไปแล้ว ไม่สามารถเช็คอินซ้ำได้
+
+                {/* รับของสมนาคุณ */}
+                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ${
+                  giftIsReceived
+                    ? 'border-amber-400 bg-amber-50'
+                    : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/30'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={giftIsReceived}
+                    onChange={toggleGift}
+                    className="w-5 h-5 accent-amber-600 cursor-pointer flex-shrink-0"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <Sparkles className={`w-4 h-4 ${giftIsReceived ? 'text-amber-600' : 'text-slate-400'}`} strokeWidth={2.5} />
+                      รับของสมนาคุณแล้ว
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {giftIsReceived
+                        ? '✓ ส่งมอบเสื้อ, เบอร์แข่ง, และของที่ระลึกแล้ว'
+                        : 'เสื้อ, เบอร์แข่ง, และของที่ระลึกประจำงาน'}
+                    </p>
                   </div>
-                )}
+                  {giftIsReceived && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-600 text-white text-[10px] font-bold flex-shrink-0">
+                      <Check className="w-3 h-3" strokeWidth={3} />
+                      รับแล้ว
+                    </span>
+                  )}
+                </label>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="lg:col-span-2">

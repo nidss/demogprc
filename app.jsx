@@ -4974,6 +4974,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [eventFilter, setEventFilter] = useState('all');
   const [racerFilter, setRacerFilter] = useState('all');
   const [racerSearch, setRacerSearch] = useState('');
+  const [dayFilter, setDayFilter] = useState('all'); // 'all' | dateId เช่น 'D1'
   const [activeTab, setActiveTab] = useState('scan'); // scan | list
 
   useEffect(() => { setRecentCheckIns(checkIns); }, [checkIns]);
@@ -5012,14 +5013,25 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
 
   const confirmCheckIn = () => {
     if (!foundRacer || foundRacer.alreadyCheckedIn) return;
+    // หาวันแรกที่นักแข่งคนนี้ยังไม่ได้เช็คอิน
+    const racerSelectedDates = foundRacer.racer.selectedDates || [];
+    const alreadyCheckedDates = new Set(
+      recentCheckIns
+        .filter(c => c.refId === foundRacer.reg.refId && c.racerId === foundRacer.racer.id)
+        .map(c => c.dateId)
+    );
+    const nextDateId = racerSelectedDates.find(d => !alreadyCheckedDates.has(d)) || racerSelectedDates[0];
+    const dateObj = RACE_DATES.find(d => d.id === nextDateId);
+
     const checkInRecord = {
       id: Date.now(),
       refId: foundRacer.reg.refId,
       racerId: foundRacer.racer.id,
       racerName: `${foundRacer.racer.thFirstName} ${foundRacer.racer.thLastName}`,
       eventId: foundRacer.reg.eventId,
+      dateId: nextDateId,
       time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+      date: dateObj?.short || new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
     };
     onCheckIn(checkInRecord);
     setRecentCheckIns([checkInRecord, ...recentCheckIns]);
@@ -5250,7 +5262,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
               const allCount = allRacers.length;
               return (
                 <button
-                  onClick={() => setEventFilter('all')}
+                  onClick={() => { setEventFilter('all'); setDayFilter('all'); }}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
                     eventFilter === 'all'
                       ? 'bg-slate-900 text-white shadow'
@@ -5272,7 +5284,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
               return (
                 <button
                   key={evt.id}
-                  onClick={() => setEventFilter(evt.id)}
+                  onClick={() => { setEventFilter(evt.id); setDayFilter('all'); }}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
                     isActive
                       ? 'bg-red-600 text-white shadow shadow-red-600/30'
@@ -5287,6 +5299,74 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
               );
             })}
           </div>
+
+          {/* Date tabs — แสดงเฉพาะวันที่มีคนลงใน event ที่เลือก */}
+          {(() => {
+            const relevantRegs = eventFilter === 'all'
+              ? registrations
+              : registrations.filter(r => r.eventId === eventFilter);
+            const dateIdsSet = new Set();
+            relevantRegs.forEach(r => r.racers.forEach(racer => {
+              (racer.selectedDates || []).forEach(did => dateIdsSet.add(did));
+            }));
+            const availableDates = RACE_DATES.filter(d => dateIdsSet.has(d.id));
+            // ไม่ต้องแสดง tab ถ้าวันเดียวหรือไม่มีข้อมูล
+            if (availableDates.length < 2) return null;
+
+            const countByDay = (dateId) => {
+              let count = 0;
+              relevantRegs.forEach(r => r.racers.forEach(racer => {
+                if ((racer.selectedDates || []).includes(dateId)) count++;
+              }));
+              return count;
+            };
+            const totalAcrossDays = relevantRegs.reduce((s, r) => s + r.racers.length, 0);
+
+            return (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-3.5 h-3.5 text-red-600" strokeWidth={2.5} />
+                  <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">เลือกวันแข่ง</p>
+                  <span className="text-[10px] text-slate-500">— event นี้มี {availableDates.length} วัน</span>
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setDayFilter('all')}
+                    className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[11px] font-bold transition ${
+                      dayFilter === 'all'
+                        ? 'bg-slate-900 text-white shadow'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    ทุกวัน
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded text-[9px] font-black ${
+                      dayFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                    }`}>{totalAcrossDays}</span>
+                  </button>
+                  {availableDates.map(d => {
+                    const c = countByDay(d.id);
+                    const isActive = dayFilter === d.id;
+                    return (
+                      <button
+                        key={d.id}
+                        onClick={() => setDayFilter(d.id)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[11px] font-bold transition ${
+                          isActive
+                            ? 'bg-red-600 text-white shadow shadow-red-600/30'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:border-red-300'
+                        }`}
+                      >
+                        {d.short}
+                        <span className={`inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded text-[9px] font-black ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                        }`}>{c}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Status filter + search */}
           <div className="flex gap-2 flex-wrap">
@@ -5319,18 +5399,31 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
 
         {/* List */}
         {(() => {
-          // คำนวณ flat list ของนักแข่งทั้งหมด + check status
+          // คำนวณ flat list — status ตาม dayFilter:
+          // - ถ้าเลือกวันใดวันหนึ่ง: status = เช็คอินของวันนั้น
+          // - ถ้า 'ทุกวัน': status = เช็คอินอย่างน้อย 1 วัน (เดิม)
           let allRacers = registrations.flatMap(r =>
             r.racers.map(racer => {
-              const isCheckedIn = recentCheckIns.some(c => c.refId === r.refId && c.racerId === racer.id);
-              const checkInRecord = recentCheckIns.find(c => c.refId === r.refId && c.racerId === racer.id);
-              return { racer, reg: r, isCheckedIn, checkInRecord };
+              const racerCheckIns = recentCheckIns.filter(c => c.refId === r.refId && c.racerId === racer.id);
+              let isCheckedIn, checkInRecord;
+              if (dayFilter !== 'all') {
+                checkInRecord = racerCheckIns.find(c => c.dateId === dayFilter);
+                isCheckedIn = !!checkInRecord;
+              } else {
+                isCheckedIn = racerCheckIns.length > 0;
+                checkInRecord = racerCheckIns[0];
+              }
+              return { racer, reg: r, isCheckedIn, checkInRecord, racerCheckIns };
             })
           );
 
           // Filter by event
           if (eventFilter !== 'all') {
             allRacers = allRacers.filter(x => x.reg.eventId === eventFilter);
+          }
+          // Filter by day — โชว์เฉพาะคนที่ลงวันนั้น
+          if (dayFilter !== 'all') {
+            allRacers = allRacers.filter(x => (x.racer.selectedDates || []).includes(dayFilter));
           }
           // Filter by status
           if (racerFilter === 'checked') allRacers = allRacers.filter(x => x.isCheckedIn);
@@ -5350,16 +5443,29 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
           const totalCheckedIn = allRacers.filter(x => x.isCheckedIn).length;
           const totalPending = allRacers.length - totalCheckedIn;
 
+          // วันที่กำลังดูอยู่
+          const currentDay = dayFilter !== 'all' ? RACE_DATES.find(d => d.id === dayFilter) : null;
+
           return (
             <>
               <div className="px-4 sm:px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] flex-wrap gap-2">
                 <span className="font-bold text-slate-700">
-                  พบ <span className="text-red-600">{allRacers.length}</span> คน
+                  {currentDay ? (
+                    <>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-100 text-red-700 mr-2">
+                        <Calendar className="w-3 h-3" strokeWidth={2.5} />
+                        {currentDay.short}
+                      </span>
+                      พบ <span className="text-red-600">{allRacers.length}</span> คน
+                    </>
+                  ) : (
+                    <>พบ <span className="text-red-600">{allRacers.length}</span> คน</>
+                  )}
                 </span>
                 <div className="flex items-center gap-3 text-[10px]">
                   <span className="inline-flex items-center gap-1 text-green-700 font-semibold">
                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                    เช็คอินแล้ว {totalCheckedIn}
+                    {currentDay ? `เช็คอินวันนี้ ${totalCheckedIn}` : `เช็คอินแล้ว ${totalCheckedIn}`}
                   </span>
                   <span className="inline-flex items-center gap-1 text-slate-600 font-semibold">
                     <span className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
@@ -5389,6 +5495,13 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                         if (t) tierLabels.push(t.label);
                       }
                     }
+                    // วันที่นักแข่งคนนี้ลงทั้งหมด — สำหรับ badge ตอน "ทุกวัน"
+                    const racerDays = (x.racer.selectedDates || [])
+                      .map(did => RACE_DATES.find(d => d.id === did))
+                      .filter(Boolean);
+                    // วันที่เช็คอินแล้ว
+                    const checkedDayIds = new Set((x.racerCheckIns || []).map(c => c.dateId).filter(Boolean));
+
                     return (
                       <button
                         key={x.reg.id + '-' + x.racer.id}
@@ -5408,6 +5521,18 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                                 {ev.id === 'evt1' ? 'RUN BIKE' : 'GPRC'}
                               </span>
                             )}
+                            {/* day badges — แสดงเฉพาะตอน 'ทุกวัน' ถ้านักแข่งลงหลายวัน */}
+                            {dayFilter === 'all' && racerDays.length > 1 && racerDays.map(d => {
+                              const checked = checkedDayIds.has(d.id);
+                              return (
+                                <span key={d.id} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                  checked ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {checked && <Check className="w-2 h-2" strokeWidth={3} />}
+                                  {d.short}
+                                </span>
+                              );
+                            })}
                           </div>
                           <p className="text-[10px] text-slate-500 truncate">
                             <span className="font-mono">{x.reg.refId}</span>
@@ -5435,7 +5560,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold group-hover:bg-red-50 group-hover:text-red-600 transition">
                               <span className="w-1.5 h-1.5 bg-slate-400 rounded-full group-hover:bg-red-500" />
-                              รอเช็คอิน
+                              {currentDay ? `รอวัน ${currentDay.short}` : 'รอเช็คอิน'}
                             </span>
                           )}
                         </div>
@@ -5612,21 +5737,25 @@ function App() {
       }
       setRegistrations(mock);
 
-      // mock check-ins — สุ่ม 30% เช็คอินแล้ว
+      // mock check-ins — สุ่มต่อวันที่ลง (แต่ละวันมี 30% โอกาสเช็คอิน)
       const mockCheckIns = [];
       mock.forEach(reg => {
         reg.racers.forEach(racer => {
-          if (Math.random() < 0.3) {
-            mockCheckIns.push({
-              id: Date.now() + Math.random(),
-              refId: reg.refId,
-              racerId: racer.id,
-              racerName: `${racer.thFirstName} ${racer.thLastName}`,
-              eventId: reg.eventId,
-              time: `${String(Math.floor(Math.random() * 5) + 7).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
-              date: reg.date,
-            });
-          }
+          (racer.selectedDates || []).forEach(dateId => {
+            if (Math.random() < 0.3) {
+              const dateObj = RACE_DATES.find(d => d.id === dateId);
+              mockCheckIns.push({
+                id: Date.now() + Math.random(),
+                refId: reg.refId,
+                racerId: racer.id,
+                racerName: `${racer.thFirstName} ${racer.thLastName}`,
+                eventId: reg.eventId,
+                dateId, // เพิ่มฟิลด์นี้ — บอกว่าเช็คอินวันไหน
+                time: `${String(Math.floor(Math.random() * 5) + 7).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+                date: dateObj?.short || reg.date,
+              });
+            }
+          });
         });
       });
       setCheckIns(mockCheckIns);

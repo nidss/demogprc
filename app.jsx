@@ -4972,6 +4972,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [scanning, setScanning] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
   const [giftReceived, setGiftReceived] = useState({}); // { '${refId}-${racerId}': true }
+  const [selectedDateId, setSelectedDateId] = useState(null); // วันที่กำลังจะ check-in
   const [eventFilter, setEventFilter] = useState('all');
   const [racerFilter, setRacerFilter] = useState('all');
   const [racerSearch, setRacerSearch] = useState('');
@@ -5004,9 +5005,14 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
       if (found) {
         const alreadyCheckedIn = recentCheckIns.some(c => c.refId === found.reg.refId && c.racerId === found.racer.id);
         setFoundRacer({ ...found, alreadyCheckedIn });
+        // auto-select วันแรกที่ยังไม่ check-in
+        const checked = new Set(recentCheckIns.filter(c => c.refId === found.reg.refId && c.racerId === found.racer.id).map(c => c.dateId));
+        const firstPending = (found.racer.selectedDates || []).find(d => !checked.has(d));
+        setSelectedDateId(firstPending || (found.racer.selectedDates?.[0] ?? null));
         setError('');
       } else {
         setFoundRacer(null);
+        setSelectedDateId(null);
         setError('ไม่พบข้อมูลในระบบ — ตรวจสอบเลขอ้างอิงหรือชื่ออีกครั้ง');
       }
     }, 400);
@@ -5035,6 +5041,13 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
     };
     onCheckIn(checkInRecord);
     setRecentCheckIns([checkInRecord, ...recentCheckIns]);
+    // Auto-select วันถัดไปที่ยังไม่เช็คอิน (เพื่อให้ flow ต่อไปเร็ว)
+    const allDates = foundRacer.racer.selectedDates || [];
+    const newChecked = new Set([...recentCheckIns
+      .filter(c => c.refId === foundRacer.reg.refId && c.racerId === foundRacer.racer.id)
+      .map(c => c.dateId), dateId]);
+    const nextPending = allDates.find(d => !newChecked.has(d));
+    setSelectedDateId(nextPending || null);
   };
 
   const toggleGift = () => {
@@ -5043,7 +5056,17 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
     setGiftReceived({ ...giftReceived, [key]: !giftReceived[key] });
   };
 
-  const quickFillSamples = registrations.flatMap(r => r.racers.map(racer => ({ refId: r.refId, name: `${racer.thFirstName} ${racer.thLastName}` }))).slice(0, 3);
+  // เลือกคนตัวอย่างให้กดสะดวก — ใส่คนที่ลง 2+ วันก่อน เพื่อให้ทดสอบ check-in รายวันได้
+  const quickFillSamples = (() => {
+    const all = registrations.flatMap(r => r.racers.map(racer => ({
+      refId: r.refId,
+      name: `${racer.thFirstName} ${racer.thLastName}`,
+      days: (racer.selectedDates || []).length,
+    })));
+    const multiDay = all.filter(x => x.days > 1);
+    const singleDay = all.filter(x => x.days <= 1);
+    return [...multiDay, ...singleDay].slice(0, 3);
+  })();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -5128,9 +5151,12 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                     <button
                       key={i}
                       onClick={() => { setScanInput(s.refId); handleScan(s.refId); }}
-                      className="text-[10px] px-2 py-1 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 transition font-mono font-bold"
+                      className="text-[10px] px-2 py-1 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 transition font-mono font-bold inline-flex items-center gap-1"
                     >
                       {s.refId}
+                      {s.days > 1 && (
+                        <span className="inline-flex items-center justify-center px-1 rounded bg-amber-500 text-white text-[9px] font-black">{s.days} วัน</span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -5210,52 +5236,73 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                   </div>
                 </div>
 
-                {/* รายการแข่ง — กดได้ */}
+                {/* รายการแข่ง — radio select */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">รายการแข่ง</p>
-                    <p className="text-[10px] text-slate-500">กดเพื่อเช็คอิน</p>
+                    <p className="text-[10px] text-slate-500">
+                      {dateGroups.length > 1 ? 'เลือกวันที่จะเช็คอิน' : 'กดยืนยันด้านล่าง'}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     {dateGroups.map(g => {
                       const isChecked = checkedDateIds.has(g.did);
+                      const isSelected = selectedDateId === g.did;
                       const checkRecord = recentCheckIns.find(c =>
                         c.refId === foundRacer.reg.refId &&
                         c.racerId === foundRacer.racer.id &&
                         c.dateId === g.did
                       );
                       return (
-                        <button
+                        <label
                           key={g.did}
-                          onClick={() => !isChecked && confirmCheckInForDate(g.did)}
-                          disabled={isChecked}
-                          className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all group ${
+                          className={`block w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all group ${
                             isChecked
                               ? 'border-green-300 bg-green-50 cursor-default'
-                              : 'border-slate-200 bg-white hover:border-red-400 hover:bg-red-50/50 hover:shadow-md cursor-pointer active:scale-[0.99]'
+                              : isSelected
+                                ? 'border-red-500 bg-red-50/60 shadow-md cursor-pointer'
+                                : 'border-slate-200 bg-white hover:border-red-300 hover:bg-red-50/30 cursor-pointer'
                           }`}
                         >
+                          <input
+                            type="radio"
+                            name="checkin-date"
+                            value={g.did}
+                            checked={isSelected}
+                            disabled={isChecked}
+                            onChange={() => setSelectedDateId(g.did)}
+                            className="sr-only"
+                          />
                           <div className="flex items-center gap-3">
-                            {/* Status icon */}
+                            {/* Radio + Status indicator */}
                             <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex-shrink-0 transition ${
                               isChecked
                                 ? 'bg-green-600 text-white'
-                                : 'bg-slate-100 text-slate-500 group-hover:bg-red-600 group-hover:text-white'
+                                : isSelected
+                                  ? 'bg-red-600 text-white shadow shadow-red-500/30'
+                                  : 'bg-white border-2 border-slate-200 text-slate-400 group-hover:border-red-300'
                             }`}>
                               {isChecked ? (
                                 <Check className="w-5 h-5" strokeWidth={3} />
+                              ) : isSelected ? (
+                                <div className="w-3 h-3 rounded-full bg-white" />
                               ) : (
-                                <Calendar className="w-5 h-5" strokeWidth={2} />
+                                <div className="w-3 h-3 rounded-full border-2 border-slate-300" />
                               )}
                             </div>
-                            {/* Date + tiers info */}
+                            {/* Date + tiers */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-base font-black text-slate-900">{g.dateObj.short}</p>
                                 {isChecked && checkRecord && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 border border-green-200 text-green-700 text-[10px] font-bold">
                                     <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                                    {checkRecord.time}
+                                    เช็คอิน {checkRecord.time}
+                                  </span>
+                                )}
+                                {!isChecked && isSelected && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                                    เลือกอยู่
                                   </span>
                                 )}
                               </div>
@@ -5271,22 +5318,15 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                                 ))}
                               </div>
                             </div>
-                            {/* Action label */}
-                            {!isChecked && (
-                              <div className="flex-shrink-0 hidden sm:flex items-center gap-1 text-xs font-bold text-slate-400 group-hover:text-red-600 transition">
-                                เช็คอิน
-                                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
-                              </div>
-                            )}
                           </div>
-                        </button>
+                        </label>
                       );
                     })}
                   </div>
                 </div>
 
                 {/* รับของสมนาคุณ */}
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ${
+                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition mb-4 ${
                   giftIsReceived
                     ? 'border-amber-400 bg-amber-50'
                     : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/30'
@@ -5315,6 +5355,30 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                     </span>
                   )}
                 </label>
+
+                {/* Confirm button */}
+                {(() => {
+                  const selectedIsChecked = selectedDateId && checkedDateIds.has(selectedDateId);
+                  const canSubmit = selectedDateId && !selectedIsChecked;
+                  const selectedDate = RACE_DATES.find(d => d.id === selectedDateId);
+                  return (
+                    <Button
+                      onClick={() => canSubmit && confirmCheckInForDate(selectedDateId)}
+                      disabled={!canSubmit}
+                      className="w-full"
+                    >
+                      {allChecked ? (
+                        <>เช็คอินครบทุกวันแล้ว ✓</>
+                      ) : selectedIsChecked ? (
+                        <>วันนี้เช็คอินแล้ว — เลือกวันอื่น</>
+                      ) : selectedDate ? (
+                        <><Check className="w-4 h-4" /> ยืนยันการเช็คอิน · {selectedDate.short}</>
+                      ) : (
+                        <>กรุณาเลือกวันที่จะเช็คอิน</>
+                      )}
+                    </Button>
+                  );
+                })()}
               </div>
             </div>
             );

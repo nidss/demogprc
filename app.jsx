@@ -1976,9 +1976,22 @@ function StepSummary({ racers, data, setData, next, prev }) {
                   <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 text-white text-[10px] font-black flex-shrink-0">
                     #{ri + 1}
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold truncate">{rb.name}</p>
-                    {rb.nickname && <p className="text-[10px] text-red-200 truncate">{rb.nickname}</p>}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {rb.nickname && <p className="text-[10px] text-red-200 truncate">{rb.nickname}</p>}
+                      {rb.racer.shirtSize && (
+                        <>
+                          {rb.nickname && <span className="text-red-300/50">·</span>}
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/10 border border-white/20 text-white text-[10px] font-bold">
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7l4-4h10l4 4-4 4v9a1 1 0 01-1 1H8a1 1 0 01-1-1v-9L3 7z"/>
+                            </svg>
+                            ไซส์ {rb.racer.shirtSize}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-sm font-black text-white">{fmt(rb.subtotal)} ฿</p>
@@ -4310,6 +4323,38 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
   const checkInCount = filteredCheckIns.length;
   const checkInRate = totalRacers > 0 ? Math.round((checkInCount / totalRacers) * 100) : 0;
 
+  // สรุปแยกตามรุ่น
+  const tierStats = useMemo(() => {
+    // คำนวณข้อมูลแต่ละรุ่น: จำนวนคนลง, รอชำระ, ชำระแล้ว, ยอดรวม
+    const map = {}; // { tierId: { tier, totalCount, paidCount, pendingCount, revenue } }
+    filteredRegs.forEach(reg => {
+      const isPaid = reg.paymentStatus !== 'pending'; // default = paid (ถ้าไม่ระบุ)
+      reg.racers.forEach(racer => {
+        (racer.selectedDates || []).forEach(did => {
+          (racer.selectedRaces?.[did] || []).forEach(tid => {
+            const t = RACE_TIERS.find(x => x.id === tid);
+            if (!t) return;
+            if (!map[tid]) {
+              map[tid] = { tier: t, totalCount: 0, paidCount: 0, pendingCount: 0, revenue: 0 };
+            }
+            map[tid].totalCount++;
+            if (isPaid) {
+              map[tid].paidCount++;
+              map[tid].revenue += t.price || 0;
+            } else {
+              map[tid].pendingCount++;
+            }
+          });
+        });
+      });
+    });
+    return Object.values(map).sort((a, b) => b.totalCount - a.totalCount);
+  }, [filteredRegs]);
+
+  const totalTierPaid = tierStats.reduce((s, t) => s + t.paidCount, 0);
+  const totalTierPending = tierStats.reduce((s, t) => s + t.pendingCount, 0);
+  const maxTierCount = Math.max(...tierStats.map(t => t.totalCount), 1);
+
   // Event stats สำหรับ sidebar (เสมอใช้ all data)
   const eventStats = EVENTS.map(evt => {
     const regsForEvent = registrations.filter(r => r.eventId === evt.id);
@@ -4378,6 +4423,138 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
         <KpiCard label="จำนวนนักแข่ง" value={totalRacers} unit="คน" icon={User} trend="+8%" color="from-red-500 to-red-700" />
         <KpiCard label="รายได้รวม" value={fmt(totalRevenue)} unit="บาท" icon={CreditCard} trend="+15%" color="from-green-500 to-green-700" />
         <KpiCard label="เช็คอินแล้ว" value={checkInCount} unit={`${checkInRate}%`} icon={Check} trend={`${checkInRate}%`} color="from-amber-500 to-amber-700" trendIsRate />
+      </div>
+
+      {/* Tier Breakdown — สรุปแยกตามรุ่น */}
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden mb-6">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-red-600" strokeWidth={2} />
+              สรุปแยกตามรุ่นแข่ง
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">นักแข่งต่อรุ่น · สถานะชำระเงิน · ยอดรวม</p>
+          </div>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 font-bold">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-slate-600">ชำระแล้ว</span>
+              <span className="text-green-700">{totalTierPaid}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-bold">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-slate-600">รอชำระ</span>
+              <span className="text-amber-700">{totalTierPending}</span>
+            </span>
+          </div>
+        </div>
+        {tierStats.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีข้อมูลการลงทะเบียน</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-2.5 text-left whitespace-nowrap">รุ่น</th>
+                  <th className="px-4 py-2.5 text-left">การกระจาย</th>
+                  <th className="px-4 py-2.5 text-center whitespace-nowrap">ลงทะเบียน</th>
+                  <th className="px-4 py-2.5 text-center whitespace-nowrap">รอชำระ</th>
+                  <th className="px-4 py-2.5 text-center whitespace-nowrap">ชำระแล้ว</th>
+                  <th className="px-4 py-2.5 text-right whitespace-nowrap">ยอดรวม</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {tierStats.map(({ tier, totalCount, paidCount, pendingCount, revenue }) => {
+                  const widthPct = (totalCount / maxTierCount) * 100;
+                  const paidPct = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+                  const groupColor = tier.group === 'standard' ? 'red' : tier.group === 'girl' ? 'pink' : 'amber';
+                  const groupClass = {
+                    red: { bg: 'bg-red-100', text: 'text-red-700', bar: 'from-red-500 to-red-700' },
+                    pink: { bg: 'bg-pink-100', text: 'text-pink-700', bar: 'from-pink-500 to-pink-700' },
+                    amber: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'from-amber-500 to-amber-700' },
+                  }[groupColor];
+                  return (
+                    <tr key={tier.id} className="hover:bg-slate-50 transition">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md ${groupClass.bg} ${groupClass.text} text-xs font-black`}>
+                            {tier.label}
+                          </span>
+                          <div>
+                            <p className="text-[11px] text-slate-700 font-medium leading-tight">{tier.name || tier.label}</p>
+                            {tier.range && <p className="text-[10px] text-slate-400 leading-tight">{tier.range}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 min-w-[180px]">
+                        {/* Stacked bar: paid (green) + pending (amber) */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden flex" style={{ width: `${widthPct}%`, minWidth: '60px' }}>
+                            {paidCount > 0 && (
+                              <div
+                                className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all"
+                                style={{ width: `${paidPct}%` }}
+                                title={`ชำระแล้ว ${paidCount}`}
+                              />
+                            )}
+                            {pendingCount > 0 && (
+                              <div
+                                className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all"
+                                style={{ width: `${100 - paidPct}%` }}
+                                title={`รอชำระ ${pendingCount}`}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <span className="text-lg font-black text-slate-900">{totalCount}</span>
+                        <span className="text-[10px] text-slate-400 ml-1">คน</span>
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {pendingCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            {pendingCount}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {paidCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-bold">
+                            <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                            {paidCount}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <span className="text-sm font-black text-slate-900">{fmt(revenue)}</span>
+                        <span className="text-[10px] text-slate-400 ml-0.5">฿</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                <tr>
+                  <td colSpan={2} className="px-4 py-2.5 text-[11px] font-bold text-slate-700 uppercase">รวมทั้งหมด</td>
+                  <td className="px-4 py-2.5 text-center font-black text-slate-900">
+                    {tierStats.reduce((s, t) => s + t.totalCount, 0)}
+                  </td>
+                  <td className="px-4 py-2.5 text-center font-black text-amber-700">{totalTierPending}</td>
+                  <td className="px-4 py-2.5 text-center font-black text-green-700">{totalTierPaid}</td>
+                  <td className="px-4 py-2.5 text-right font-black text-slate-900">
+                    {fmt(tierStats.reduce((s, t) => s + t.revenue, 0))} <span className="text-[10px] font-normal text-slate-400">฿</span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Registration table — full width */}
@@ -4527,6 +4704,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
           guardianPhone: reg.guardian?.phone || '-',
           guardianName: reg.guardian?.name || '',
+          couponCode: reg.couponCode || null,
+          hasTaxInvoice: !!(reg.taxInvoice && reg.taxInvoice.enabled),
         });
       });
     });
@@ -4575,22 +4754,25 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'ชื่อเล่น': r.nickname,
       'เพศ': r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-',
       'อายุ': r.age !== null ? r.age + ' ปี' : '-',
+      'ไซส์เสื้อ': r.shirtSize || '-',
       'วันที่ลงแข่ง': r.raceDays.length > 0 ? r.raceDays.join(', ') : '-',
       'รุ่นที่แข่ง (หลัก)': r.mainTiers,
       'รุ่นที่แข่ง (เพิ่ม)': r.additionalTiers,
-      'เบอร์ผู้ปกครอง': r.guardianPhone,
       'ชื่อผู้ปกครอง': r.guardianName || '-',
+      'เบอร์ผู้ปกครอง': r.guardianPhone,
+      'คูปอง': r.couponCode || '-',
+      'ใบกำกับภาษี': r.hasTaxInvoice ? 'ขอ' : '-',
       'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
       'Event': r.eventId === 'evt1' ? 'RUN BIKE' : 'GPRC 2026',
-      'ไซส์เสื้อ': r.shirtSize || '-',
       'ประเทศ': r.country || '-',
       'ทีม': r.teamName || '-',
     }));
     const ws = window.XLSX.utils.json_to_sheet(exportRows);
     ws['!cols'] = [
       { wch: 6 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 14 },
-      { wch: 8 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 25 }, { wch: 22 },
-      { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 22 },
+      { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
+      { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 12 },
+      { wch: 22 }, { wch: 14 }, { wch: 8 }, { wch: 22 },
     ];
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, 'การลงทะเบียน');
@@ -4676,19 +4858,23 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
         {filteredRows.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="text-sm" style={{ minWidth: '1500px', width: '100%' }}>
             <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
               <tr>
-                <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ทำรายการ</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">เลขอ้างอิง</th>
-                <th className="px-3 py-2.5 text-left">ชื่อ-นามสกุล</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อเล่น</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เพศ</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">อายุ</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">ไซส์เสื้อ</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ลงแข่ง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นหลัก</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นเพิ่ม</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อผู้ปกครอง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">เบอร์ผู้ปกครอง</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">คูปอง</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">ใบกำกับภาษี</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เช็คอิน</th>
               </tr>
             </thead>
@@ -4722,6 +4908,15 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-center text-xs font-bold text-slate-900 whitespace-nowrap">{r.age !== null ? `${r.age} ปี` : '-'}</td>
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {r.shirtSize ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold">
+                          {r.shirtSize}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {r.raceDays.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
@@ -4750,11 +4945,36 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       )}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
+                      {r.guardianName ? (
+                        <span className="text-xs text-slate-700">{r.guardianName}</span>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       {r.guardianPhone !== '-' ? (
                         <a href={`tel:${r.guardianPhone.replace(/[-\s]/g, '')}`} className="inline-flex items-center gap-1 text-xs font-mono font-bold text-slate-900 hover:text-red-600 transition" title={r.guardianName}>
                           <Phone className="w-3 h-3 text-slate-400" strokeWidth={2} />
                           {r.guardianPhone}
                         </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {r.couponCode ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-mono font-bold">
+                          {r.couponCode}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {r.hasTaxInvoice ? (
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700" title="ขอใบกำกับภาษี">
+                          <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                        </span>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>
                       )}
@@ -4971,8 +5191,10 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
-  const [giftReceived, setGiftReceived] = useState({}); // { '${refId}-${racerId}': true }
+  const [giftReceived, setGiftReceived] = useState({}); // { '${refId}-${racerId}-${dateId}': true }
   const [selectedDateId, setSelectedDateId] = useState(null); // วันที่กำลังจะ check-in
+  // "วันนี้" ในการ demo — เลือกวันไหนได้, default = วันแรกของ RACE_DATES
+  const [todayDateId, setTodayDateId] = useState(RACE_DATES[0]?.id || null);
   const [eventFilter, setEventFilter] = useState('all');
   const [racerFilter, setRacerFilter] = useState('all');
   const [racerSearch, setRacerSearch] = useState('');
@@ -5005,10 +5227,13 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
       if (found) {
         const alreadyCheckedIn = recentCheckIns.some(c => c.refId === found.reg.refId && c.racerId === found.racer.id);
         setFoundRacer({ ...found, alreadyCheckedIn });
-        // auto-select วันแรกที่ยังไม่ check-in
-        const checked = new Set(recentCheckIns.filter(c => c.refId === found.reg.refId && c.racerId === found.racer.id).map(c => c.dateId));
-        const firstPending = (found.racer.selectedDates || []).find(d => !checked.has(d));
-        setSelectedDateId(firstPending || (found.racer.selectedDates?.[0] ?? null));
+        // auto-select วันที่เป็น "วันนี้" ถ้านักแข่งคนนี้ลงวันนี้
+        const racerDates = found.racer.selectedDates || [];
+        if (racerDates.includes(todayDateId)) {
+          setSelectedDateId(todayDateId);
+        } else {
+          setSelectedDateId(null); // ไม่ auto select ถ้าวันนี้ไม่มีในรายการ
+        }
         setError('');
       } else {
         setFoundRacer(null);
@@ -5020,6 +5245,11 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
 
   const confirmCheckInForDate = (dateId) => {
     if (!foundRacer || !dateId) return;
+    // เช็คว่าเป็นวันปัจจุบันไหม
+    if (dateId !== todayDateId) {
+      setError('ไม่สามารถเช็คอินวันอื่นได้ — เช็คอินได้เฉพาะวันปัจจุบันเท่านั้น');
+      return;
+    }
     // เช็คซ้ำ — ถ้าวันนี้เช็คอินแล้วไม่ทำซ้ำ
     const alreadyToday = recentCheckIns.some(c =>
       c.refId === foundRacer.reg.refId &&
@@ -5050,9 +5280,9 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
     setSelectedDateId(nextPending || null);
   };
 
-  const toggleGift = () => {
-    if (!foundRacer) return;
-    const key = `${foundRacer.reg.refId}-${foundRacer.racer.id}`;
+  const toggleGift = (dateId) => {
+    if (!foundRacer || !dateId) return;
+    const key = `${foundRacer.reg.refId}-${foundRacer.racer.id}-${dateId}`;
     setGiftReceived({ ...giftReceived, [key]: !giftReceived[key] });
   };
 
@@ -5078,10 +5308,28 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="mb-5">
-        <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">เริ่มงานหน้าสนาม</p>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Check-in หน้างาน</h1>
-        <p className="text-sm text-slate-500 mt-1">สแกน QR Code ของผู้แข่งเพื่อบันทึกการเข้าร่วม</p>
+      <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">เริ่มงานหน้าสนาม</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Check-in หน้างาน</h1>
+          <p className="text-sm text-slate-500 mt-1">สแกน QR Code ของผู้แข่งเพื่อบันทึกการเข้าร่วม</p>
+        </div>
+        {/* Today selector — สำหรับ demo: เลือกวันที่ "เสมือนวันนี้" */}
+        <div className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 shadow-sm">
+          <div className="text-right">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">วันแข่ง (วันนี้)</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">เช็คอินได้เฉพาะวันที่เลือก</p>
+          </div>
+          <select
+            value={todayDateId || ''}
+            onChange={e => setTodayDateId(e.target.value)}
+            className="px-3 h-9 text-sm font-bold rounded-md border border-red-300 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none cursor-pointer"
+          >
+            {RACE_DATES.map(d => (
+              <option key={d.id} value={d.id}>{d.short}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -5206,8 +5454,6 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
 
             const allChecked = dateGroups.every(g => checkedDateIds.has(g.did));
             const checkedCount = dateGroups.filter(g => checkedDateIds.has(g.did)).length;
-            const giftKey = `${foundRacer.reg.refId}-${foundRacer.racer.id}`;
-            const giftIsReceived = !!giftReceived[giftKey];
 
             return (
             <div className={`mt-4 rounded-2xl overflow-hidden border-2 ${allChecked ? 'border-amber-300' : 'border-green-300'} bg-white`}>
@@ -5244,131 +5490,154 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                   </div>
                 </div>
 
-                {/* รายการแข่ง — radio select */}
+                {/* รายการแข่ง — radio select (กดได้เฉพาะวันปัจจุบัน) */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">รายการแข่ง</p>
                     <p className="text-[10px] text-slate-500">
-                      {dateGroups.length > 1 ? 'เลือกวันที่จะเช็คอิน' : 'กดยืนยันด้านล่าง'}
+                      เช็คอินได้เฉพาะวันที่ตรงกับ "วันแข่ง (วันนี้)"
                     </p>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {dateGroups.map(g => {
                       const isChecked = checkedDateIds.has(g.did);
                       const isSelected = selectedDateId === g.did;
+                      const isToday = g.did === todayDateId;
+                      const isDisabled = isChecked || !isToday;
                       const checkRecord = recentCheckIns.find(c =>
                         c.refId === foundRacer.reg.refId &&
                         c.racerId === foundRacer.racer.id &&
                         c.dateId === g.did
                       );
+                      // gift state ต่อวัน
+                      const giftKey = `${foundRacer.reg.refId}-${foundRacer.racer.id}-${g.did}`;
+                      const giftIsReceived = !!giftReceived[giftKey];
+
                       return (
-                        <label
-                          key={g.did}
-                          className={`block w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all group ${
-                            isChecked
-                              ? 'border-green-300 bg-green-50 cursor-default'
-                              : isSelected
-                                ? 'border-red-500 bg-red-50/60 shadow-md cursor-pointer'
-                                : 'border-slate-200 bg-white hover:border-red-300 hover:bg-red-50/30 cursor-pointer'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="checkin-date"
-                            value={g.did}
-                            checked={isSelected}
-                            disabled={isChecked}
-                            onChange={() => setSelectedDateId(g.did)}
-                            className="sr-only"
-                          />
-                          <div className="flex items-center gap-3">
-                            {/* Radio + Status indicator */}
-                            <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex-shrink-0 transition ${
-                              isChecked
-                                ? 'bg-green-600 text-white'
-                                : isSelected
-                                  ? 'bg-red-600 text-white shadow shadow-red-500/30'
-                                  : 'bg-white border-2 border-slate-200 text-slate-400 group-hover:border-red-300'
-                            }`}>
-                              {isChecked ? (
-                                <Check className="w-5 h-5" strokeWidth={3} />
-                              ) : isSelected ? (
-                                <div className="w-3 h-3 rounded-full bg-white" />
-                              ) : (
-                                <div className="w-3 h-3 rounded-full border-2 border-slate-300" />
-                              )}
-                            </div>
-                            {/* Date + tiers */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-base font-black text-slate-900">{g.dateObj.short}</p>
-                                {isChecked && checkRecord && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 border border-green-200 text-green-700 text-[10px] font-bold">
-                                    <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                                    เช็คอิน {checkRecord.time}
-                                  </span>
-                                )}
-                                {!isChecked && isSelected && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">
-                                    เลือกอยู่
-                                  </span>
+                        <div key={g.did} className={`rounded-xl border-2 overflow-hidden transition-all ${
+                          isChecked
+                            ? 'border-green-300 bg-green-50/40'
+                            : isSelected && isToday
+                              ? 'border-red-500 bg-red-50/40 shadow-md'
+                              : !isToday
+                                ? 'border-slate-200 bg-slate-50/60 opacity-70'
+                                : 'border-slate-200 bg-white hover:border-red-300'
+                        }`}>
+                          {/* Radio header */}
+                          <label className={`block p-3 sm:p-4 ${isDisabled ? 'cursor-default' : 'cursor-pointer'}`}>
+                            <input
+                              type="radio"
+                              name="checkin-date"
+                              value={g.did}
+                              checked={isSelected}
+                              disabled={isDisabled}
+                              onChange={() => !isDisabled && setSelectedDateId(g.did)}
+                              className="sr-only"
+                            />
+                            <div className="flex items-center gap-3">
+                              {/* Radio + Status indicator */}
+                              <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex-shrink-0 transition ${
+                                isChecked
+                                  ? 'bg-green-600 text-white'
+                                  : isSelected && isToday
+                                    ? 'bg-red-600 text-white shadow shadow-red-500/30'
+                                    : !isToday
+                                      ? 'bg-slate-100 text-slate-400'
+                                      : 'bg-white border-2 border-slate-200 text-slate-400'
+                              }`}>
+                                {isChecked ? (
+                                  <Check className="w-5 h-5" strokeWidth={3} />
+                                ) : !isToday ? (
+                                  <Lock className="w-4 h-4" strokeWidth={2} />
+                                ) : isSelected ? (
+                                  <div className="w-3 h-3 rounded-full bg-white" />
+                                ) : (
+                                  <div className="w-3 h-3 rounded-full border-2 border-slate-300" />
                                 )}
                               </div>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {g.tiers.map((t, ti) => (
-                                  <span key={ti} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                    t.group === 'standard'
-                                      ? 'bg-red-50 text-red-700 border border-red-100'
-                                      : 'bg-amber-50 text-amber-700 border border-amber-100'
-                                  }`}>
-                                    รุ่น {t.label}
-                                  </span>
-                                ))}
+                              {/* Date + tiers */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-base font-black text-slate-900">{g.dateObj.short}</p>
+                                  {isToday && !isChecked && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 border border-blue-200 text-blue-700 text-[10px] font-bold uppercase">
+                                      วันนี้
+                                    </span>
+                                  )}
+                                  {!isToday && !isChecked && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold">
+                                      <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
+                                      ไม่ใช่วันนี้
+                                    </span>
+                                  )}
+                                  {isChecked && checkRecord && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 border border-green-200 text-green-700 text-[10px] font-bold">
+                                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                                      เช็คอิน {checkRecord.time}
+                                    </span>
+                                  )}
+                                  {!isChecked && isSelected && isToday && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                                      เลือกอยู่
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {g.tiers.map((t, ti) => (
+                                    <span key={ti} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      t.group === 'standard'
+                                        ? 'bg-red-50 text-red-700 border border-red-100'
+                                        : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                    }`}>
+                                      รุ่น {t.label}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </label>
+                          </label>
+
+                          {/* รับของสมนาคุณ — ต่อวัน */}
+                          <label className={`flex items-center gap-2.5 px-3 sm:px-4 py-2.5 border-t cursor-pointer transition ${
+                            giftIsReceived
+                              ? 'border-amber-200 bg-amber-50/70'
+                              : isToday
+                                ? 'border-slate-200 bg-white hover:bg-amber-50/30'
+                                : 'border-slate-200 bg-slate-50/30 cursor-not-allowed opacity-60'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={giftIsReceived}
+                              onChange={() => isToday && toggleGift(g.did)}
+                              disabled={!isToday}
+                              className="w-4 h-4 accent-amber-600 cursor-pointer flex-shrink-0 disabled:cursor-not-allowed"
+                            />
+                            <Sparkles className={`w-3.5 h-3.5 flex-shrink-0 ${giftIsReceived ? 'text-amber-600' : 'text-slate-400'}`} strokeWidth={2.5} />
+                            <span className="flex-1 text-xs font-medium text-slate-700">
+                              รับของสมนาคุณวัน{g.dateObj.short}แล้ว
+                            </span>
+                            {giftIsReceived && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-600 text-white text-[9px] font-bold flex-shrink-0">
+                                <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                                รับแล้ว
+                              </span>
+                            )}
+                          </label>
+                        </div>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* รับของสมนาคุณ */}
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition mb-4 ${
-                  giftIsReceived
-                    ? 'border-amber-400 bg-amber-50'
-                    : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/30'
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={giftIsReceived}
-                    onChange={toggleGift}
-                    className="w-5 h-5 accent-amber-600 cursor-pointer flex-shrink-0"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                      <Sparkles className={`w-4 h-4 ${giftIsReceived ? 'text-amber-600' : 'text-slate-400'}`} strokeWidth={2.5} />
-                      รับของสมนาคุณแล้ว
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {giftIsReceived
-                        ? '✓ ส่งมอบเสื้อ, เบอร์แข่ง, และของที่ระลึกแล้ว'
-                        : 'เสื้อ, เบอร์แข่ง, และของที่ระลึกประจำงาน'}
-                    </p>
-                  </div>
-                  {giftIsReceived && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-600 text-white text-[10px] font-bold flex-shrink-0">
-                      <Check className="w-3 h-3" strokeWidth={3} />
-                      รับแล้ว
-                    </span>
-                  )}
-                </label>
-
                 {/* Confirm button */}
                 {(() => {
                   const selectedIsChecked = selectedDateId && checkedDateIds.has(selectedDateId);
-                  const canSubmit = selectedDateId && !selectedIsChecked;
+                  const selectedIsToday = selectedDateId === todayDateId;
+                  const canSubmit = selectedDateId && !selectedIsChecked && selectedIsToday;
                   const selectedDate = RACE_DATES.find(d => d.id === selectedDateId);
+                  const todayDate = RACE_DATES.find(d => d.id === todayDateId);
+                  // เช็คว่ามีวันไหนใน racer ที่ตรงกับ today ไหม
+                  const racerHasToday = (foundRacer.racer.selectedDates || []).includes(todayDateId);
                   return (
                     <Button
                       onClick={() => canSubmit && confirmCheckInForDate(selectedDateId)}
@@ -5377,8 +5646,12 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                     >
                       {allChecked ? (
                         <>เช็คอินครบทุกวันแล้ว ✓</>
+                      ) : !racerHasToday ? (
+                        <>นักแข่งไม่มีรายการในวันนี้ ({todayDate?.short})</>
                       ) : selectedIsChecked ? (
-                        <>วันนี้เช็คอินแล้ว — เลือกวันอื่น</>
+                        <>วันนี้เช็คอินแล้ว ✓</>
+                      ) : !selectedIsToday && selectedDateId ? (
+                        <><Lock className="w-4 h-4" /> เลือกได้เฉพาะวัน {todayDate?.short}</>
                       ) : selectedDate ? (
                         <><Check className="w-4 h-4" /> ยืนยันการเช็คอิน · {selectedDate.short}</>
                       ) : (
@@ -5906,6 +6179,14 @@ function App() {
         // ใช้ลูกคนแรกของ reg นี้ตั้งชื่อพ่อ
         const guardianName = `${pick(['คุณ', 'คุณ', 'คุณ'])}${pickIdx(['สมชาย', 'วิชัย', 'ประวิทย์', 'อนุชา', 'พิพัฒน์', 'มณี', 'สุภาพร', 'พรทิพย์', 'จิราพร', 'นันทนา'], i)} ${regRacers[0].thLastName}`;
 
+        // สุ่มสถานะชำระเงิน — 75% paid, 25% pending
+        const paymentStatus = Math.random() < 0.75 ? 'paid' : 'pending';
+        // สุ่มคูปอง — 20% มีคูปอง
+        const couponCodes = ['GPRC10', 'GPRCMAIN', 'GPRC10', null, null];
+        const couponCode = Math.random() < 0.2 ? pick(couponCodes.filter(Boolean)) : null;
+        // สุ่มขอใบกำกับภาษี — 30%
+        const wantsTaxInvoice = Math.random() < 0.3;
+
         mock.push({
           id: Date.now() - i * 100000,
           refId: 'REG-' + String(20260100 + i).slice(0, 8),
@@ -5919,6 +6200,9 @@ function App() {
             email: `parent${i + 1}@example.com`,
             address: '',
           },
+          paymentStatus,
+          couponCode,
+          taxInvoice: wantsTaxInvoice ? { enabled: true, name: guardianName } : null,
           totalItems: regTotalItems,
           total: regTotal,
         });

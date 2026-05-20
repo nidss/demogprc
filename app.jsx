@@ -4520,11 +4520,13 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           fullName: `${racer.thFirstName} ${racer.thLastName}`,
           nickname: racer.nickname || '-',
           gender: racer.gender, age, birthDate: racer.birthDate,
-          raceDays, // array ของ short labels เช่น ['1 มิ.ย.', '2 มิ.ย.']
+          raceDays,
           mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
           additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
           isCheckedIn, checkInTime: checkInRecord?.time,
           shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
+          guardianPhone: reg.guardian?.phone || '-',
+          guardianName: reg.guardian?.name || '',
         });
       });
     });
@@ -4576,6 +4578,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'วันที่ลงแข่ง': r.raceDays.length > 0 ? r.raceDays.join(', ') : '-',
       'รุ่นที่แข่ง (หลัก)': r.mainTiers,
       'รุ่นที่แข่ง (เพิ่ม)': r.additionalTiers,
+      'เบอร์ผู้ปกครอง': r.guardianPhone,
+      'ชื่อผู้ปกครอง': r.guardianName || '-',
       'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
       'Event': r.eventId === 'evt1' ? 'RUN BIKE' : 'GPRC 2026',
       'ไซส์เสื้อ': r.shirtSize || '-',
@@ -4585,7 +4589,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     const ws = window.XLSX.utils.json_to_sheet(exportRows);
     ws['!cols'] = [
       { wch: 6 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 14 },
-      { wch: 8 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
+      { wch: 8 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 25 }, { wch: 22 },
       { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 22 },
     ];
     const wb = window.XLSX.utils.book_new();
@@ -4684,6 +4688,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ลงแข่ง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นหลัก</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นเพิ่ม</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">เบอร์ผู้ปกครอง</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เช็คอิน</th>
               </tr>
             </thead>
@@ -4740,6 +4745,16 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold">
                           {r.additionalTiers}
                         </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {r.guardianPhone !== '-' ? (
+                        <a href={`tel:${r.guardianPhone.replace(/[-\s]/g, '')}`} className="inline-flex items-center gap-1 text-xs font-mono font-bold text-slate-900 hover:text-red-600 transition" title={r.guardianName}>
+                          <Phone className="w-3 h-3 text-slate-400" strokeWidth={2} />
+                          {r.guardianPhone}
+                        </a>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>
                       )}
@@ -5401,6 +5416,15 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                             <span className="text-slate-300 mx-1">·</span>
                             {tierLabels.length > 0 && `รุ่น ${tierLabels.join(', ')}`}
                           </p>
+                          {x.reg.guardian?.phone && (
+                            <p className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1">
+                              <Phone className="w-2.5 h-2.5 text-slate-400" strokeWidth={2} />
+                              <span className="font-mono font-bold text-slate-700">{x.reg.guardian.phone}</span>
+                              {x.reg.guardian.name && (
+                                <span className="text-slate-400 truncate">· {x.reg.guardian.name}</span>
+                              )}
+                            </p>
+                          )}
                         </div>
                         <div className="flex-shrink-0">
                           {x.isCheckedIn ? (
@@ -5562,6 +5586,13 @@ function App() {
         const regDate = new Date(Date.now() - daysAgo * 86400000);
         const dateStr = regDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 
+        // สุ่มเบอร์ผู้ปกครอง — ขึ้นต้น 08X หรือ 09X
+        const phonePrefix = Math.random() > 0.5 ? '08' : '09';
+        const phoneRest = String(Math.floor(Math.random() * 100000000)).padStart(8, '0');
+        const guardianPhone = `${phonePrefix}${phoneRest.slice(0, 1)}-${phoneRest.slice(1, 4)}-${phoneRest.slice(4)}`;
+        // ใช้ลูกคนแรกของ reg นี้ตั้งชื่อพ่อ
+        const guardianName = `${pick(['คุณ', 'คุณ', 'คุณ'])}${pickIdx(['สมชาย', 'วิชัย', 'ประวิทย์', 'อนุชา', 'พิพัฒน์', 'มณี', 'สุภาพร', 'พรทิพย์', 'จิราพร', 'นันทนา'], i)} ${regRacers[0].thLastName}`;
+
         mock.push({
           id: Date.now() - i * 100000,
           refId: 'REG-' + String(20260100 + i).slice(0, 8),
@@ -5569,6 +5600,12 @@ function App() {
           dateRaw: regDate.toISOString(),
           eventId,
           racers: regRacers,
+          guardian: {
+            name: guardianName,
+            phone: guardianPhone,
+            email: `parent${i + 1}@example.com`,
+            address: '',
+          },
           totalItems: regTotalItems,
           total: regTotal,
         });
@@ -5739,6 +5776,7 @@ function App() {
       date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
       eventId: data.eventId || null,
       racers: racers,
+      guardian: data.guardian || null,
       totalItems: racers.reduce((s, r) => s + Object.values(r.selectedRaces || {}).reduce((a, b) => a + b.length, 0), 0),
       total: data.finalTotal,
     };

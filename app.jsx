@@ -5056,16 +5056,24 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
     setGiftReceived({ ...giftReceived, [key]: !giftReceived[key] });
   };
 
-  // เลือกคนตัวอย่างให้กดสะดวก — ใส่คนที่ลง 2+ วันก่อน เพื่อให้ทดสอบ check-in รายวันได้
+  // เลือกคนตัวอย่างให้กดสะดวก — ใส่คนที่ลง 2+ วันและยังไม่ได้เช็คอินเลยก่อน เพื่อให้ทดสอบ check-in รายวันได้
   const quickFillSamples = (() => {
-    const all = registrations.flatMap(r => r.racers.map(racer => ({
-      refId: r.refId,
-      name: `${racer.thFirstName} ${racer.thLastName}`,
-      days: (racer.selectedDates || []).length,
-    })));
-    const multiDay = all.filter(x => x.days > 1);
+    const all = registrations.flatMap(r => r.racers.map(racer => {
+      const days = (racer.selectedDates || []).length;
+      const checkedCount = recentCheckIns.filter(c => c.refId === r.refId && c.racerId === racer.id).length;
+      return {
+        refId: r.refId,
+        name: `${racer.thFirstName} ${racer.thLastName}`,
+        days,
+        checkedCount,
+        isPristine: checkedCount === 0, // ยังไม่เช็คอินเลย
+      };
+    }));
+    // priority: 1) หลายวัน + ยังไม่เช็คอินเลย, 2) หลายวัน, 3) อื่นๆ
+    const multiDayPristine = all.filter(x => x.days > 1 && x.isPristine);
+    const multiDay = all.filter(x => x.days > 1 && !x.isPristine);
     const singleDay = all.filter(x => x.days <= 1);
-    return [...multiDay, ...singleDay].slice(0, 3);
+    return [...multiDayPristine, ...multiDay, ...singleDay].slice(0, 3);
   })();
 
   return (

@@ -4495,7 +4495,10 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
         }
         const mainTiers = [];
         const additionalTiers = [];
+        const raceDays = []; // วันที่ลงแข่ง (short labels)
         (racer.selectedDates || []).forEach(did => {
+          const dateObj = RACE_DATES.find(d => d.id === did);
+          if (dateObj && !raceDays.includes(dateObj.short)) raceDays.push(dateObj.short);
           (racer.selectedRaces?.[did] || []).forEach(tid => {
             const t = RACE_TIERS.find(x => x.id === tid);
             if (!t) return;
@@ -4517,6 +4520,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           fullName: `${racer.thFirstName} ${racer.thLastName}`,
           nickname: racer.nickname || '-',
           gender: racer.gender, age, birthDate: racer.birthDate,
+          raceDays, // array ของ short labels เช่น ['1 มิ.ย.', '2 มิ.ย.']
           mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
           additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
           isCheckedIn, checkInTime: checkInRecord?.time,
@@ -4569,6 +4573,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'ชื่อเล่น': r.nickname,
       'เพศ': r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-',
       'อายุ': r.age !== null ? r.age + ' ปี' : '-',
+      'วันที่ลงแข่ง': r.raceDays.length > 0 ? r.raceDays.join(', ') : '-',
       'รุ่นที่แข่ง (หลัก)': r.mainTiers,
       'รุ่นที่แข่ง (เพิ่ม)': r.additionalTiers,
       'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
@@ -4580,7 +4585,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     const ws = window.XLSX.utils.json_to_sheet(exportRows);
     ws['!cols'] = [
       { wch: 6 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 14 },
-      { wch: 8 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
+      { wch: 8 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
       { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 22 },
     ];
     const wb = window.XLSX.utils.book_new();
@@ -4676,6 +4681,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อเล่น</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เพศ</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">อายุ</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ลงแข่ง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นหลัก</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นเพิ่ม</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เช็คอิน</th>
@@ -4711,6 +4717,19 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-center text-xs font-bold text-slate-900 whitespace-nowrap">{r.age !== null ? `${r.age} ปี` : '-'}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {r.raceDays.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {r.raceDays.map((d, di) => (
+                            <span key={di} className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold">
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold">
                         {r.mainTiers}

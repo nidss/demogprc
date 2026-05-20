@@ -4657,7 +4657,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [filterAge, setFilterAge] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc');
 
-  // flatten registrations → 1 row per racer
+  // flatten registrations → 1 row per racer × day
   const rows = useMemo(() => {
     const out = [];
     registrations.forEach(reg => {
@@ -4670,13 +4670,18 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           const m = now.getMonth() - birth.getMonth();
           if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
         }
-        const mainTiers = [];
-        const additionalTiers = [];
-        const raceDays = []; // วันที่ลงแข่ง (short labels)
-        (racer.selectedDates || []).forEach(did => {
-          const dateObj = RACE_DATES.find(d => d.id === did);
-          if (dateObj && !raceDays.includes(dateObj.short)) raceDays.push(dateObj.short);
-          (racer.selectedRaces?.[did] || []).forEach(tid => {
+
+        const selectedDates = racer.selectedDates || [];
+        // ถ้านักแข่งไม่ได้เลือกวันเลย — ใส่แถว placeholder 1 แถว
+        const datesToProcess = selectedDates.length > 0 ? selectedDates : [null];
+
+        datesToProcess.forEach((did, dayIdx) => {
+          const dateObj = did ? RACE_DATES.find(d => d.id === did) : null;
+          // รุ่นเฉพาะของวันนี้
+          const tiersForDay = did ? (racer.selectedRaces?.[did] || []) : [];
+          const mainTiers = [];
+          const additionalTiers = [];
+          tiersForDay.forEach(tid => {
             const t = RACE_TIERS.find(x => x.id === tid);
             if (!t) return;
             if (t.group === 'standard') {
@@ -4685,27 +4690,38 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
               if (!additionalTiers.includes(t.label)) additionalTiers.push(t.label);
             }
           });
-        });
-        const isCheckedIn = checkIns.some(c => c.refId === reg.refId && c.racerId === racer.id);
-        const checkInRecord = checkIns.find(c => c.refId === reg.refId && c.racerId === racer.id);
 
-        out.push({
-          regId: reg.id, refId: reg.refId, date: reg.date,
-          dateRaw: reg.dateRaw || reg.date,
-          eventId: reg.eventId,
-          racerId: racer.id,
-          fullName: `${racer.thFirstName} ${racer.thLastName}`,
-          nickname: racer.nickname || '-',
-          gender: racer.gender, age, birthDate: racer.birthDate,
-          raceDays,
-          mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
-          additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
-          isCheckedIn, checkInTime: checkInRecord?.time,
-          shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
-          guardianPhone: reg.guardian?.phone || '-',
-          guardianName: reg.guardian?.name || '',
-          couponCode: reg.couponCode || null,
-          hasTaxInvoice: !!(reg.taxInvoice && reg.taxInvoice.enabled),
+          // เช็คอินเฉพาะวันนี้ของนักแข่งคนนี้
+          const checkInRecord = did
+            ? checkIns.find(c => c.refId === reg.refId && c.racerId === racer.id && c.dateId === did)
+            : null;
+          const isCheckedIn = !!checkInRecord;
+
+          out.push({
+            regId: reg.id, refId: reg.refId, date: reg.date,
+            dateRaw: reg.dateRaw || reg.date,
+            eventId: reg.eventId,
+            racerId: racer.id,
+            // เพิ่ม composite key เพื่อ React row uniqueness
+            rowKey: `${reg.id}-${racer.id}-${did || 'none'}`,
+            // ตำแหน่งวันใน multi-day group (สำหรับ subtle visual cue)
+            isFirstOfRacer: dayIdx === 0,
+            totalDaysForRacer: datesToProcess.length,
+            dayIndex: dayIdx,
+            fullName: `${racer.thFirstName} ${racer.thLastName}`,
+            nickname: racer.nickname || '-',
+            gender: racer.gender, age, birthDate: racer.birthDate,
+            raceDayLabel: dateObj?.short || '—', // 1 วันต่อแถว
+            raceDayId: did,
+            mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
+            additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
+            isCheckedIn, checkInTime: checkInRecord?.time,
+            shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
+            guardianPhone: reg.guardian?.phone || '-',
+            guardianName: reg.guardian?.name || '',
+            couponCode: reg.couponCode || null,
+            hasTaxInvoice: !!(reg.taxInvoice && reg.taxInvoice.enabled),
+          });
         });
       });
     });
@@ -4755,7 +4771,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'เพศ': r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-',
       'อายุ': r.age !== null ? r.age + ' ปี' : '-',
       'ไซส์เสื้อ': r.shirtSize || '-',
-      'วันที่ลงแข่ง': r.raceDays.length > 0 ? r.raceDays.join(', ') : '-',
+      'วันที่ลงแข่ง': r.raceDayLabel,
       'รุ่นที่แข่ง (หลัก)': r.mainTiers,
       'รุ่นที่แข่ง (เพิ่ม)': r.additionalTiers,
       'ชื่อผู้ปกครอง': r.guardianName || '-',
@@ -4882,7 +4898,9 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
               {filteredRows.slice(0, 100).map(r => {
                 const ev = EVENTS.find(e => e.id === r.eventId);
                 return (
-                  <tr key={`${r.regId}-${r.racerId}`} className="hover:bg-slate-50 transition">
+                  <tr key={r.rowKey} className={`hover:bg-slate-50 transition ${
+                    !r.isFirstOfRacer ? 'border-t-slate-100/50' : ''
+                  }`}>
                     <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-slate-600">{r.date}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
@@ -4918,13 +4936,17 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       )}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      {r.raceDays.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {r.raceDays.map((d, di) => (
-                            <span key={di} className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold">
-                              {d}
+                      {r.raceDayId ? (
+                        <div className="flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold">
+                            <Calendar className="w-2.5 h-2.5" strokeWidth={2.5} />
+                            {r.raceDayLabel}
+                          </span>
+                          {r.totalDaysForRacer > 1 && (
+                            <span className="text-[9px] text-slate-400 font-mono">
+                              {r.dayIndex + 1}/{r.totalDaysForRacer}
                             </span>
-                          ))}
+                          )}
                         </div>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>

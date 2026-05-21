@@ -46,27 +46,27 @@ const EVENTS = [
 const RACE_TIERS = [
   // รุ่นมาตรฐาน (Age-based) — เช็คจากเดือน-ปีเกิดเทียบกับเดือน-ปีจัดแข่ง
   // ageMin/ageMax = [year, dot] โดย dot = 0-11 (.0 = ครบปีพอดี, .1 = 1 เดือนหลังครบ, ..., .11 = 11 เดือนหลังครบ)
-  { id: 'A2',   label: '2 ปี',      name: '2.0 - 3.0 Years Old',       ageMin: [2, 0],  ageMax: [3, 0],  price: 500, group: 'standard',  range: '2.0 - 3.0 ปี' },
-  { id: 'A3B',  label: '3 ปี "B"',  name: '3 ปี "B" (3.1-3.6)',         ageMin: [3, 1],  ageMax: [3, 6],  price: 600, group: 'standard',  range: '3.1 - 3.6 ปี' },
-  { id: 'A3A',  label: '3 ปี "A"',  name: '3 ปี "A" (3.7-4.0)',         ageMin: [3, 7],  ageMax: [4, 0],  price: 600, group: 'standard',  range: '3.7 - 4.0 ปี' },
-  { id: 'A4B',  label: '4 ปี "B"',  name: '4 ปี "B" (4.1-4.6)',         ageMin: [4, 1],  ageMax: [4, 6],  price: 700, group: 'standard',  range: '4.1 - 4.6 ปี' },
-  { id: 'A4A',  label: '4 ปี "A"',  name: '4 ปี "A" (4.7-5.0)',         ageMin: [4, 7],  ageMax: [5, 0],  price: 700, group: 'standard',  range: '4.7 - 5.0 ปี' },
-  { id: 'A5B',  label: '5 ปี "B"',  name: '5 ปี "B" (5.1-5.6)',         ageMin: [5, 1],  ageMax: [5, 6],  price: 800, group: 'standard',  range: '5.1 - 5.6 ปี' },
-  { id: 'A5A',  label: '5 ปี "A"',  name: '5 ปี "A" (5.7-6.0)',         ageMin: [5, 7],  ageMax: [6, 0],  price: 800, group: 'standard',  range: '5.7 - 6.0 ปี' },
-  { id: 'A6B',  label: '6 ปี "B"',  name: '6 ปี "B" (6.1-6.6)',         ageMin: [6, 1],  ageMax: [6, 6],  price: 900, group: 'standard',  range: '6.1 - 6.6 ปี' },
-  { id: 'A6A',  label: '6 ปี "A"',  name: '6 ปี "A" (6.7-7.0)',         ageMin: [6, 7],  ageMax: [7, 0],  price: 900, group: 'standard',  range: '6.7 - 7.0 ปี' },
-  { id: 'A78',  label: '7.1-8 ปี',  name: '7.1-8.0 Years Old',          ageMin: [7, 1],  ageMax: [8, 0],  price: 1000, group: 'standard', range: '7.1 - 8.0 ปี' },
-  { id: 'A810', label: '8.1-10 ปี', name: '8.1-10.0 Years Old',         ageMin: [8, 1],  ageMax: [10, 0], price: 1100, group: 'standard', range: '8.1 - 10.0 ปี' },
+  { id: 'A2',   label: '2 ปี',      name: 'รุ่นอายุ 2 ปี (2.0-3.0 Years Old)',           ageMin: [2, 0],  ageMax: [3, 0],  price: 500, group: 'standard',  range: '2.0 - 3.0 ปี' },
+  { id: 'A3B',  label: '3 ปี "B"',  name: 'รุ่นอายุ 3 ปี "B" (3.1-3.6 Years Old)',       ageMin: [3, 1],  ageMax: [3, 6],  price: 600, group: 'standard',  range: '3.1 - 3.6 ปี' },
+  { id: 'A3A',  label: '3 ปี "A"',  name: 'รุ่นอายุ 3 ปี "A" (3.7-4.0 Years Old)',       ageMin: [3, 7],  ageMax: [4, 0],  price: 600, group: 'standard',  range: '3.7 - 4.0 ปี' },
+  { id: 'A4B',  label: '4 ปี "B"',  name: 'รุ่นอายุ 4 ปี "B" (4.1-4.6 Years Old)',       ageMin: [4, 1],  ageMax: [4, 6],  price: 700, group: 'standard',  range: '4.1 - 4.6 ปี' },
+  { id: 'A4A',  label: '4 ปี "A"',  name: 'รุ่นอายุ 4 ปี "A" (4.7-5.0 Years Old)',       ageMin: [4, 7],  ageMax: [5, 0],  price: 700, group: 'standard',  range: '4.7 - 5.0 ปี' },
+  { id: 'A5B',  label: '5 ปี "B"',  name: 'รุ่นอายุ 5 ปี "B" (5.1-5.6 Years Old)',       ageMin: [5, 1],  ageMax: [5, 6],  price: 800, group: 'standard',  range: '5.1 - 5.6 ปี' },
+  { id: 'A5A',  label: '5 ปี "A"',  name: 'รุ่นอายุ 5 ปี "A" (5.7-6.0 Years Old)',       ageMin: [5, 7],  ageMax: [6, 0],  price: 800, group: 'standard',  range: '5.7 - 6.0 ปี' },
+  { id: 'A6B',  label: '6 ปี "B"',  name: 'รุ่นอายุ 6 ปี "B" (6.1-6.6 Years Old)',       ageMin: [6, 1],  ageMax: [6, 6],  price: 900, group: 'standard',  range: '6.1 - 6.6 ปี' },
+  { id: 'A6A',  label: '6 ปี "A"',  name: 'รุ่นอายุ 6 ปี "A" (6.7-7.0 Years Old)',       ageMin: [6, 7],  ageMax: [7, 0],  price: 900, group: 'standard',  range: '6.7 - 7.0 ปี' },
+  { id: 'A78',  label: '7.1-8 ปี',  name: 'รุ่นอายุ 7.1-8.0 ปี (7.1-8.0 Years Old)',     ageMin: [7, 1],  ageMax: [8, 0],  price: 1000, group: 'standard', range: '7.1 - 8.0 ปี' },
+  { id: 'A810', label: '8.1-10 ปี', name: 'รุ่นอายุ 8.1-10.0 ปี (8.1-10.0 Years Old)',  ageMin: [8, 1],  ageMax: [10, 0], price: 1100, group: 'standard', range: '8.1 - 10.0 ปี' },
 
   // Open Girl — เฉพาะหญิง, ตามปีเกิด
-  { id: 'GJ', label: 'Open Girl Junior', name: 'รุ่นผู้หญิงจูเนียร์', birthYears: [2022, 2023], range: 'เกิดปี 2022-2023', price: 800,  group: 'girl', gender: 'female' },
-  { id: 'GS', label: 'Open Girl Senior', name: 'รุ่นผู้หญิงซีเนียร์', birthYears: [2020, 2021], range: 'เกิดปี 2020-2021', price: 900,  group: 'girl', gender: 'female' },
-  { id: 'GP', label: 'Open Girl Pro',    name: 'รุ่นผู้หญิงโปร',     birthYears: [2017, 2018, 2019], range: 'เกิดปี 2017-2019', price: 1000, group: 'girl', gender: 'female' },
+  { id: 'GJ', label: 'Open Girl Junior', name: 'รุ่นผู้หญิงจูเนียร์ เกิดปี 2022-2023 (Open Girl - Junior 2022-2023)', birthYears: [2022, 2023], range: 'เกิดปี 2022-2023', price: 800,  group: 'girl', gender: 'female' },
+  { id: 'GS', label: 'Open Girl Senior', name: 'รุ่นผู้หญิงซีเนียร์ เกิดปี 2020-2021 (Open Girl - Senior 2020-2021)', birthYears: [2020, 2021], range: 'เกิดปี 2020-2021', price: 900,  group: 'girl', gender: 'female' },
+  { id: 'GP', label: 'Open Girl Pro',    name: 'รุ่นผู้หญิงโปร เกิดปี 2017-2019 (Open Girl - Pro 2017-2019)',        birthYears: [2017, 2018, 2019], range: 'เกิดปี 2017-2019', price: 1000, group: 'girl', gender: 'female' },
 
   // Open — ทุกเพศ, ตามปีเกิด
-  { id: 'OJ', label: 'Open Junior', name: 'รุ่นโอเพ่นจูเนียร์', birthYears: [2022, 2023], range: 'เกิดปี 2022-2023', price: 800,  group: 'open' },
-  { id: 'OS', label: 'Open Senior', name: 'รุ่นโอเพ่นซีเนียร์', birthYears: [2020, 2021], range: 'เกิดปี 2020-2021', price: 900,  group: 'open' },
-  { id: 'OP', label: 'Open Pro',    name: 'รุ่นโอเพ่นโปร',     birthYears: [2013, 2014, 2015, 2016, 2017, 2018, 2019], range: 'เกิดปี 2013-2019', price: 1100, group: 'open' },
+  { id: 'OJ', label: 'Open Junior', name: 'รุ่นโอเพ่นจูเนียร์ เกิดปี 2022-2023 (Open Junior/2022-2023)', birthYears: [2022, 2023], range: 'เกิดปี 2022-2023', price: 800,  group: 'open' },
+  { id: 'OS', label: 'Open Senior', name: 'รุ่นโอเพ่นซีเนียร์ เกิดปี 2020-2021 (Open Senior/2020-2021)', birthYears: [2020, 2021], range: 'เกิดปี 2020-2021', price: 900,  group: 'open' },
+  { id: 'OP', label: 'Open Pro',    name: 'รุ่นโอเพ่นโปร เกิดปี 2013-2019 (Open Pro/2013-2019)',        birthYears: [2013, 2014, 2015, 2016, 2017, 2018, 2019], range: 'เกิดปี 2013-2019', price: 1100, group: 'open' },
 ];
 
 const TIER_GROUPS = [

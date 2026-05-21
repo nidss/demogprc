@@ -182,6 +182,8 @@ const newRacer = () => ({
   documents: [],
   selectedDates: [],
   selectedRaces: {},
+  isAnnualMember: false,
+  annualMemberId: null,
 });
 
 // Shirt sizes
@@ -1280,6 +1282,7 @@ function CountrySelect({ value, onChange }) {
 
 function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
   const [open, setOpen] = useState(true);
+  const [annualMemberOpen, setAnnualMemberOpen] = useState(false);
   const ageYM = calcAgeYM(r.birthDate);
   // eligible = union ของทุกวันแข่ง (เพราะแต่ละวันมี eligible ต่างกัน) — ใช้สำหรับ guard เท่านั้น
   const eligible = useMemo(() => {
@@ -1470,6 +1473,48 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
               onChange={(docs) => onUpdate({ documents: docs })}
             />
           </div>
+
+          {/* สมาชิกรายปี */}
+          <div className="rounded-xl border-2 border-amber-200 bg-amber-50/40 p-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!r.isAnnualMember}
+                onChange={e => {
+                  const v = e.target.checked;
+                  if (v) {
+                    setAnnualMemberOpen(true);
+                  } else {
+                    onUpdate({ isAnnualMember: false, annualMemberId: null });
+                  }
+                }}
+                className="w-4 h-4 mt-0.5 accent-amber-600 cursor-pointer flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  เป็นสมาชิกรายปี
+                </p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  สมาชิกรายปีจะได้รับสิทธิพิเศษและส่วนลดการแข่งขัน
+                </p>
+                {r.isAnnualMember && r.annualMemberId && (
+                  <p className="text-[10px] font-mono font-bold text-amber-800 mt-1">
+                    ✓ ยืนยันแล้ว · ID: {r.annualMemberId}
+                  </p>
+                )}
+              </div>
+            </label>
+          </div>
+
+          <AnnualMemberVerifyModal
+            open={annualMemberOpen}
+            onClose={() => setAnnualMemberOpen(false)}
+            onVerified={(memberId) => {
+              onUpdate({ isAnnualMember: true, annualMemberId: memberId });
+              setAnnualMemberOpen(false);
+            }}
+          />
 
           {/* รุ่นและวันแข่ง — ต้องกรอกข้อมูลครบก่อน */}
           {r.birthDate && r.gender && eligible.length > 0 && (

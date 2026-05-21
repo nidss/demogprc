@@ -4876,12 +4876,13 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           const dateObj = did ? RACE_DATES.find(d => d.id === did) : null;
           // รุ่นเฉพาะของวันนี้
           const tiersForDay = did ? (racer.selectedRaces?.[did] || []) : [];
+          // รุ่นหลัก = index 0, รุ่นเพิ่ม = index 1+ (ทุกรุ่นเป็นหลักได้หมด ไม่ขึ้นกับ group)
           const mainTiers = [];
           const additionalTiers = [];
-          tiersForDay.forEach(tid => {
+          tiersForDay.forEach((tid, idx) => {
             const t = RACE_TIERS.find(x => x.id === tid);
             if (!t) return;
-            if (t.group === 'standard') {
+            if (idx === 0) {
               if (!mainTiers.includes(t.label)) mainTiers.push(t.label);
             } else {
               if (!additionalTiers.includes(t.label)) additionalTiers.push(t.label);

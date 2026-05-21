@@ -2119,20 +2119,7 @@ function StepSummary({ racers, data, setData, next, prev }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold truncate">{rb.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {rb.nickname && <p className="text-[10px] text-red-200 truncate">{rb.nickname}</p>}
-                      {rb.racer.shirtSize && (
-                        <>
-                          {rb.nickname && <span className="text-red-300/50">·</span>}
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/10 border border-white/20 text-white text-[10px] font-bold">
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7l4-4h10l4 4-4 4v9a1 1 0 01-1 1H8a1 1 0 01-1-1v-9L3 7z"/>
-                            </svg>
-                            ไซส์ {rb.racer.shirtSize}
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    {rb.nickname && <p className="text-[10px] text-red-200 truncate">{rb.nickname}</p>}
                   </div>
                 </div>
                 <p className="text-sm font-black text-white">{fmt(rb.subtotal)} ฿</p>
@@ -2140,6 +2127,21 @@ function StepSummary({ racers, data, setData, next, prev }) {
 
               {/* Items breakdown */}
               <div className="divide-y divide-slate-100">
+                {/* ไซส์เสื้อ — แสดงเหมือนเป็น item อีกตัว */}
+                {rb.racer.shirtSize && (
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <div className="min-w-0 flex items-center gap-2">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700">
+                        ไซส์เสื้อ
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-900 font-bold truncate">ไซส์ {rb.racer.shirtSize}</p>
+                        <p className="text-[10px] text-slate-500">เสื้อแข่งประจำงาน</p>
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 ml-2 font-mono">—</p>
+                  </div>
+                )}
                 {rb.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between px-3 py-2">
                     <div className="min-w-0 flex items-center gap-2">

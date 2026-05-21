@@ -4490,7 +4490,7 @@ function AdminNavbar({ adminView, onNavigate, admin, onLogout }) {
 // ADMIN — DASHBOARD
 // ============================================================
 function AdminDashboard({ registrations, checkIns, onNavigate }) {
-  const [selectedEventId, setSelectedEventId] = useState('all'); // 'all' | event.id
+  const [selectedEventId, setSelectedEventId] = useState(EVENTS[0]?.id || ''); // event.id
   const [detailReg, setDetailReg] = useState(null); // registration ที่กำลังดู detail
 
   // กรอง registrations ตาม event ที่เลือก
@@ -4511,21 +4511,22 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
   const checkInCount = filteredCheckIns.length;
   const checkInRate = totalRacers > 0 ? Math.round((checkInCount / totalRacers) * 100) : 0;
 
-  // สรุปแยกตามรุ่น
+  // สรุปแยกตามรุ่น — แยก main (index 0) vs additional (index 1+) ของแต่ละวัน
   const tierStats = useMemo(() => {
-    // คำนวณข้อมูลแต่ละรุ่น: จำนวนคนลง, รอชำระ, ชำระแล้ว, ยอดรวม
-    const map = {}; // { tierId: { tier, totalCount, paidCount, pendingCount, revenue } }
+    const map = {}; // { tierId: { tier, mainCount, additionalCount, paidCount, pendingCount, revenue } }
     filteredRegs.forEach(reg => {
-      const isPaid = reg.paymentStatus !== 'pending'; // default = paid (ถ้าไม่ระบุ)
+      const isPaid = reg.paymentStatus !== 'pending';
       reg.racers.forEach(racer => {
         (racer.selectedDates || []).forEach(did => {
-          (racer.selectedRaces?.[did] || []).forEach(tid => {
+          const tiers = racer.selectedRaces?.[did] || [];
+          tiers.forEach((tid, idx) => {
             const t = RACE_TIERS.find(x => x.id === tid);
             if (!t) return;
             if (!map[tid]) {
-              map[tid] = { tier: t, totalCount: 0, paidCount: 0, pendingCount: 0, revenue: 0 };
+              map[tid] = { tier: t, mainCount: 0, additionalCount: 0, paidCount: 0, pendingCount: 0, revenue: 0 };
             }
-            map[tid].totalCount++;
+            if (idx === 0) map[tid].mainCount++;
+            else map[tid].additionalCount++;
             if (isPaid) {
               map[tid].paidCount++;
               map[tid].revenue += t.price || 0;
@@ -4536,12 +4537,18 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
         });
       });
     });
-    return Object.values(map).sort((a, b) => b.totalCount - a.totalCount);
+    return Object.values(map).sort((a, b) => {
+      const totalA = a.mainCount + a.additionalCount;
+      const totalB = b.mainCount + b.additionalCount;
+      return totalB - totalA;
+    });
   }, [filteredRegs]);
 
   const totalTierPaid = tierStats.reduce((s, t) => s + t.paidCount, 0);
   const totalTierPending = tierStats.reduce((s, t) => s + t.pendingCount, 0);
-  const maxTierCount = Math.max(...tierStats.map(t => t.totalCount), 1);
+  const totalMainCount = tierStats.reduce((s, t) => s + t.mainCount, 0);
+  const totalAdditionalCount = tierStats.reduce((s, t) => s + t.additionalCount, 0);
+  const totalRevenue2 = tierStats.reduce((s, t) => s + t.revenue, 0);
 
   // Event stats สำหรับ sidebar (เสมอใช้ all data)
   const eventStats = EVENTS.map(evt => {
@@ -4564,13 +4571,6 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
       {/* Event tabs */}
       <div className="mb-5 -mx-1 px-1 overflow-x-auto">
         <div className="flex gap-2 min-w-max">
-          <EventTab
-            active={selectedEventId === 'all'}
-            onClick={() => setSelectedEventId('all')}
-            label="All Events"
-            sublabel={`${registrations.length} รายการ`}
-            count={registrations.reduce((s, r) => s + r.racers.length, 0)}
-          />
           {eventStats.map(evt => (
             <EventTab
               key={evt.id}
@@ -4640,68 +4640,84 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
           <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีข้อมูลการลงทะเบียน</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+            <table className="w-full text-sm" style={{ minWidth: '1100px' }}>
+              <thead className="bg-slate-50 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-2.5 text-left whitespace-nowrap">รุ่น</th>
-                  <th className="px-4 py-2.5 text-left">การกระจาย</th>
-                  <th className="px-4 py-2.5 text-center whitespace-nowrap">ลงทะเบียน</th>
-                  <th className="px-4 py-2.5 text-center whitespace-nowrap">รอชำระ</th>
-                  <th className="px-4 py-2.5 text-center whitespace-nowrap">ชำระแล้ว</th>
-                  <th className="px-4 py-2.5 text-right whitespace-nowrap">ยอดรวม</th>
+                  <th rowSpan={2} className="px-3 py-2 text-left whitespace-nowrap border-r border-slate-200 align-middle">รุ่นการแข่งขัน</th>
+                  <th colSpan={2} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200 bg-red-50/60 text-red-800">รุ่นหลัก</th>
+                  <th colSpan={2} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200 bg-amber-50/60 text-amber-800">รุ่นเพิ่ม</th>
+                  <th colSpan={2} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200">สถานะชำระ</th>
+                  <th rowSpan={2} className="px-3 py-2 text-right whitespace-nowrap align-middle">ยอดรวม (บาท)</th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-1.5 text-right whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30">ราคา</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30 border-r border-slate-200">จำนวน</th>
+                  <th className="px-3 py-1.5 text-right whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-amber-50/30">ราคา</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-amber-50/30 border-r border-slate-200">จำนวน</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case">ชำระแล้ว</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case border-r border-slate-200">รอชำระ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tierStats.map(({ tier, totalCount, paidCount, pendingCount, revenue }) => {
-                  const widthPct = (totalCount / maxTierCount) * 100;
-                  const paidPct = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+                {tierStats.map(({ tier, mainCount, additionalCount, paidCount, pendingCount, revenue }) => {
                   const groupColor = tier.group === 'standard' ? 'red' : tier.group === 'girl' ? 'pink' : 'amber';
                   const groupClass = {
-                    red: { bg: 'bg-red-100', text: 'text-red-700', bar: 'from-red-500 to-red-700' },
-                    pink: { bg: 'bg-pink-100', text: 'text-pink-700', bar: 'from-pink-500 to-pink-700' },
-                    amber: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'from-amber-500 to-amber-700' },
+                    red: { bg: 'bg-red-100', text: 'text-red-700' },
+                    pink: { bg: 'bg-pink-100', text: 'text-pink-700' },
+                    amber: { bg: 'bg-amber-100', text: 'text-amber-700' },
                   }[groupColor];
                   return (
                     <tr key={tier.id} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 py-2.5 border-r border-slate-100">
                         <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md ${groupClass.bg} ${groupClass.text} text-xs font-black`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md ${groupClass.bg} ${groupClass.text} text-xs font-semibold flex-shrink-0`}>
                             {tier.label}
                           </span>
-                          <div>
-                            <p className="text-[11px] text-slate-700 font-medium leading-tight">{tier.name || tier.label}</p>
+                          <div className="min-w-0">
+                            <p className="text-[11px] text-slate-700 font-medium leading-tight truncate">{tier.name || tier.label}</p>
                             {tier.range && <p className="text-[10px] text-slate-400 leading-tight">{tier.range}</p>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 min-w-[180px]">
-                        {/* Stacked bar: paid (green) + pending (amber) */}
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden flex" style={{ width: `${widthPct}%`, minWidth: '60px' }}>
-                            {paidCount > 0 && (
-                              <div
-                                className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all"
-                                style={{ width: `${paidPct}%` }}
-                                title={`ชำระแล้ว ${paidCount}`}
-                              />
-                            )}
-                            {pendingCount > 0 && (
-                              <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all"
-                                style={{ width: `${100 - paidPct}%` }}
-                                title={`รอชำระ ${pendingCount}`}
-                              />
-                            )}
-                          </div>
-                        </div>
+
+                      {/* รุ่นหลัก */}
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap text-[11px] text-slate-600 bg-red-50/20">
+                        {fmt(tier.price || 0)}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <span className="text-lg font-black text-slate-900">{totalCount}</span>
-                        <span className="text-[10px] text-slate-400 ml-1">คน</span>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20 border-r border-slate-100">
+                        {mainCount > 0 ? (
+                          <span className="text-base font-medium text-slate-900">{mainCount}</span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+
+                      {/* รุ่นเพิ่ม */}
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap text-[11px] text-slate-600 bg-amber-50/20">
+                        {fmt(tier.price || 0)}
+                      </td>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap bg-amber-50/20 border-r border-slate-100">
+                        {additionalCount > 0 ? (
+                          <span className="text-base font-medium text-slate-900">{additionalCount}</span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
+
+                      {/* สถานะชำระ */}
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                        {paidCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+                            <Check className="w-2.5 h-2.5" strokeWidth={2.5} />
+                            {paidCount}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap border-r border-slate-100">
                         {pendingCount > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                             {pendingCount}
                           </span>
@@ -4709,18 +4725,10 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                           <span className="text-[11px] text-slate-300">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {paidCount > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-bold">
-                            <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                            {paidCount}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <span className="text-sm font-black text-slate-900">{fmt(revenue)}</span>
+
+                      {/* ยอดรวม */}
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <span className="text-sm font-medium text-slate-900">{fmt(revenue)}</span>
                         <span className="text-[10px] text-slate-400 ml-0.5">฿</span>
                       </td>
                     </tr>
@@ -4729,14 +4737,15 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               </tbody>
               <tfoot className="bg-slate-50 border-t-2 border-slate-200">
                 <tr>
-                  <td colSpan={2} className="px-4 py-2.5 text-[11px] font-bold text-slate-700 uppercase">รวมทั้งหมด</td>
-                  <td className="px-4 py-2.5 text-center font-black text-slate-900">
-                    {tierStats.reduce((s, t) => s + t.totalCount, 0)}
-                  </td>
-                  <td className="px-4 py-2.5 text-center font-black text-amber-700">{totalTierPending}</td>
-                  <td className="px-4 py-2.5 text-center font-black text-green-700">{totalTierPaid}</td>
-                  <td className="px-4 py-2.5 text-right font-black text-slate-900">
-                    {fmt(tierStats.reduce((s, t) => s + t.revenue, 0))} <span className="text-[10px] font-normal text-slate-400">฿</span>
+                  <td className="px-3 py-2.5 text-[11px] font-semibold text-slate-700 uppercase border-r border-slate-200">รวมทั้งหมด</td>
+                  <td className="px-3 py-2.5 bg-red-50/40 border-r border-slate-100"></td>
+                  <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-red-50/40 border-r border-slate-200">{totalMainCount}</td>
+                  <td className="px-3 py-2.5 bg-amber-50/40 border-r border-slate-100"></td>
+                  <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-amber-50/40 border-r border-slate-200">{totalAdditionalCount}</td>
+                  <td className="px-3 py-2.5 text-center font-medium text-green-700">{totalTierPaid}</td>
+                  <td className="px-3 py-2.5 text-center font-medium text-amber-700 border-r border-slate-200">{totalTierPending}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-900">
+                    {fmt(totalRevenue2)} <span className="text-[10px] font-normal text-slate-400">฿</span>
                   </td>
                 </tr>
               </tfoot>
@@ -5385,8 +5394,8 @@ function KpiCard({ label, value, unit, icon: Icon, trend, color, trendIsRate }) 
           </span>
         )}
       </div>
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">{value}</p>
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight leading-none">{value}</p>
       <p className="text-[10px] text-slate-500 mt-1">{unit}</p>
     </div>
   );

@@ -1282,7 +1282,6 @@ function CountrySelect({ value, onChange }) {
 
 function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
   const [open, setOpen] = useState(true);
-  const [annualMemberOpen, setAnnualMemberOpen] = useState(false);
   const ageYM = calcAgeYM(r.birthDate);
   // eligible = union ของทุกวันแข่ง (เพราะแต่ละวันมี eligible ต่างกัน) — ใช้สำหรับ guard เท่านั้น
   const eligible = useMemo(() => {
@@ -1480,14 +1479,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
               <input
                 type="checkbox"
                 checked={!!r.isAnnualMember}
-                onChange={e => {
-                  const v = e.target.checked;
-                  if (v) {
-                    setAnnualMemberOpen(true);
-                  } else {
-                    onUpdate({ isAnnualMember: false, annualMemberId: null });
-                  }
-                }}
+                onChange={e => onUpdate({ isAnnualMember: e.target.checked })}
                 className="w-4 h-4 mt-0.5 accent-amber-600 cursor-pointer flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
@@ -1498,23 +1490,9 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                 <p className="text-[11px] text-amber-700 mt-0.5">
                   สมาชิกรายปีจะได้รับสิทธิพิเศษและส่วนลดการแข่งขัน
                 </p>
-                {r.isAnnualMember && r.annualMemberId && (
-                  <p className="text-[10px] font-mono font-bold text-amber-800 mt-1">
-                    ✓ ยืนยันแล้ว · ID: {r.annualMemberId}
-                  </p>
-                )}
               </div>
             </label>
           </div>
-
-          <AnnualMemberVerifyModal
-            open={annualMemberOpen}
-            onClose={() => setAnnualMemberOpen(false)}
-            onVerified={(memberId) => {
-              onUpdate({ isAnnualMember: true, annualMemberId: memberId });
-              setAnnualMemberOpen(false);
-            }}
-          />
 
           {/* รุ่นและวันแข่ง — ต้องกรอกข้อมูลครบก่อน */}
           {r.birthDate && r.gender && eligible.length > 0 && (
@@ -3668,7 +3646,6 @@ function MyRacersPage({ racers, onAdd, onEdit, onDelete }) {
 function RacerEditorModal({ open, onClose, racer, onSave }) {
   const [r, setR] = useState(null);
   const [err, setErr] = useState('');
-  const [annualMemberOpen, setAnnualMemberOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -3793,15 +3770,7 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
             <input
               type="checkbox"
               checked={!!r.isAnnualMember}
-              onChange={e => {
-                const v = e.target.checked;
-                if (v) {
-                  // เปิด popup ตรวจสอบก่อน
-                  setAnnualMemberOpen(true);
-                } else {
-                  update({ isAnnualMember: false, annualMemberId: null });
-                }
-              }}
+              onChange={e => update({ isAnnualMember: e.target.checked })}
               className="w-4 h-4 mt-0.5 accent-amber-600 cursor-pointer"
             />
             <div className="flex-1">
@@ -3812,11 +3781,6 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
               <p className="text-[11px] text-amber-700 mt-0.5">
                 สมาชิกรายปีจะได้รับสิทธิพิเศษและส่วนลดการแข่งขัน
               </p>
-              {r.isAnnualMember && r.annualMemberId && (
-                <p className="text-[10px] font-mono font-bold text-amber-800 mt-1">
-                  ✓ ยืนยันแล้ว · ID: {r.annualMemberId}
-                </p>
-              )}
             </div>
           </label>
         </div>
@@ -3829,71 +3793,6 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
             <Check className="w-4 h-4" /> บันทึก
           </Button>
         </div>
-      </div>
-
-      {/* Annual member verification modal */}
-      <AnnualMemberVerifyModal
-        open={annualMemberOpen}
-        onClose={() => setAnnualMemberOpen(false)}
-        onVerified={(memberId) => {
-          update({ isAnnualMember: true, annualMemberId: memberId });
-          setAnnualMemberOpen(false);
-        }}
-      />
-    </Modal>
-  );
-}
-
-// Annual member verification — popup ตรวจสอบสมาชิก
-function AnnualMemberVerifyModal({ open, onClose, onVerified }) {
-  const [identifier, setIdentifier] = useState('');
-  const [checking, setChecking] = useState(false);
-  const [err, setErr] = useState('');
-
-  useEffect(() => { if (open) { setIdentifier(''); setErr(''); setChecking(false); } }, [open]);
-
-  const verify = () => {
-    if (!identifier.trim()) return setErr('กรุณากรอกอีเมลหรือเบอร์โทร');
-    setErr('');
-    setChecking(true);
-    // Mock: รออ 0.8 วินาที แล้ว approve (demo)
-    setTimeout(() => {
-      setChecking(false);
-      // demo: ทุก identifier ถือว่าเจอ → gen member ID
-      const memberId = 'MEM-' + String(Math.floor(Math.random() * 900000) + 100000);
-      onVerified(memberId);
-    }, 800);
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="ตรวจสอบสมาชิกรายปี">
-      <div className="space-y-3">
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" strokeWidth={2} />
-          <div className="text-xs text-amber-800">
-            <p className="font-bold">ตรวจสอบสถานะสมาชิกรายปี</p>
-            <p className="mt-0.5">กรุณากรอกอีเมลหรือเบอร์โทรที่ใช้สมัครสมาชิก เพื่อตรวจสอบกับฐานข้อมูล</p>
-          </div>
-        </div>
-        <div>
-          <Label required>อีเมล หรือ เบอร์โทรศัพท์</Label>
-          <Input
-            icon={Mail}
-            placeholder="email@example.com หรือ 08X-XXX-XXXX"
-            value={identifier}
-            onChange={e => setIdentifier(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && verify()}
-          />
-        </div>
-        {err && <Alert>{err}</Alert>}
-        <div className="flex gap-2 pt-1">
-          <Button variant="secondary" onClick={onClose} className="flex-1">ยกเลิก</Button>
-          <Button onClick={verify} disabled={checking} className="flex-1">
-            {checking ? 'กำลังตรวจสอบ...' : 'ตรวจสอบ'}
-            {!checking && <ArrowRight className="w-4 h-4" />}
-          </Button>
-        </div>
-        <p className="text-[10px] text-slate-400 text-center">💡 Demo: ทุก identifier จะผ่านการตรวจสอบ</p>
       </div>
     </Modal>
   );

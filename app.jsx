@@ -5757,26 +5757,60 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                   const todayDate = RACE_DATES.find(d => d.id === todayDateId);
                   // เช็คว่ามีวันไหนใน racer ที่ตรงกับ today ไหม
                   const racerHasToday = (foundRacer.racer.selectedDates || []).includes(todayDateId);
+                  // หาวันแรกที่นักแข่งคนนี้ยังไม่เช็คอิน (เพื่อ suggest เปลี่ยน todayDateId)
+                  const suggestedDateId = (foundRacer.racer.selectedDates || []).find(d => !checkedDateIds.has(d));
+                  const suggestedDate = suggestedDateId ? RACE_DATES.find(d => d.id === suggestedDateId) : null;
+
                   return (
-                    <Button
-                      onClick={() => canSubmit && confirmCheckInForDate(selectedDateId)}
-                      disabled={!canSubmit}
-                      className="w-full"
-                    >
-                      {allChecked ? (
-                        <>เช็คอินครบทุกวันแล้ว ✓</>
-                      ) : !racerHasToday ? (
-                        <>นักแข่งไม่มีรายการในวันนี้ ({todayDate?.short})</>
-                      ) : selectedIsChecked ? (
-                        <>วันนี้เช็คอินแล้ว ✓</>
-                      ) : !selectedIsToday && selectedDateId ? (
-                        <><Lock className="w-4 h-4" /> เลือกได้เฉพาะวัน {todayDate?.short}</>
-                      ) : selectedDate ? (
-                        <><Check className="w-4 h-4" /> ยืนยันการเช็คอิน · {selectedDate.short}</>
-                      ) : (
-                        <>กรุณาเลือกวันที่จะเช็คอิน</>
+                    <>
+                      {/* Suggest switch — ถ้านักแข่งไม่มีวันนี้ในรายการ แต่มีวันอื่นที่ยังไม่เช็คอิน */}
+                      {!allChecked && !racerHasToday && suggestedDate && (
+                        <div className="mb-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-3">
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                              <Calendar className="w-3.5 h-3.5 text-blue-700" strokeWidth={2.5} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-blue-900">นักแข่งไม่มีรายการในวัน {todayDate?.short}</p>
+                              <p className="text-[11px] text-blue-700 mt-0.5 mb-2">
+                                ต้องการเปลี่ยน "วันแข่ง (วันนี้)" เป็น <span className="font-bold">{suggestedDate.short}</span> เพื่อเช็คอินไหม?
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTodayDateId(suggestedDateId);
+                                  setSelectedDateId(suggestedDateId);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
+                              >
+                                <Calendar className="w-3 h-3" strokeWidth={2.5} />
+                                เปลี่ยนเป็นวัน {suggestedDate.short}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       )}
-                    </Button>
+
+                      <Button
+                        onClick={() => canSubmit && confirmCheckInForDate(selectedDateId)}
+                        disabled={!canSubmit}
+                        className="w-full"
+                      >
+                        {allChecked ? (
+                          <>เช็คอินครบทุกวันแล้ว ✓</>
+                        ) : !racerHasToday ? (
+                          <>นักแข่งไม่มีรายการในวันนี้ ({todayDate?.short})</>
+                        ) : selectedIsChecked ? (
+                          <>วันนี้เช็คอินแล้ว ✓</>
+                        ) : !selectedIsToday && selectedDateId ? (
+                          <><Lock className="w-4 h-4" /> เลือกได้เฉพาะวัน {todayDate?.short}</>
+                        ) : selectedDate ? (
+                          <><Check className="w-4 h-4" /> ยืนยันการเช็คอิน · {selectedDate.short}</>
+                        ) : (
+                          <>กรุณาเลือกวันที่จะเช็คอิน</>
+                        )}
+                      </Button>
+                    </>
                   );
                 })()}
               </div>

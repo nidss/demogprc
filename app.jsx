@@ -2131,7 +2131,7 @@ function StepSummary({ racers, data, setData, next, prev }) {
                 {rb.racer.shirtSize && (
                   <div className="flex items-center justify-between px-3 py-2">
                     <div className="min-w-0 flex items-center gap-2">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700">
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 min-w-[56px] flex-shrink-0">
                         ไซส์เสื้อ
                       </span>
                       <div className="min-w-0">
@@ -2145,7 +2145,7 @@ function StepSummary({ racers, data, setData, next, prev }) {
                 {rb.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between px-3 py-2">
                     <div className="min-w-0 flex items-center gap-2">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                      <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold min-w-[56px] flex-shrink-0 ${
                         item.isMain ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                       }`}>
                         {item.isMain ? 'หลัก' : 'เพิ่ม'}

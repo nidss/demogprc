@@ -2191,12 +2191,13 @@ function StepSummary({ racers, data, setData, next, prev }) {
       r.selectedDates.forEach(did => {
         const dateObj = RACE_DATES.find(d => d.id === did);
         const lockedTiersForDay = originalRaces[did] || [];
-        (r.selectedRaces[did] || []).forEach(tid => {
+        const tiersForDay = r.selectedRaces[did] || [];
+        tiersForDay.forEach((tid, idx) => {
           const t = RACE_TIERS.find(x => x.id === tid);
           if (!t) return;
           const isLockedOld = lockedTiersForDay.includes(tid);
           const effectivePrice = isLockedOld ? 0 : t.price; // รุ่นเก่าจ่ายแล้ว
-          const isMain = t.group === 'standard';
+          const isMain = idx === 0; // tier แรกของวัน = หลัก
           if (isMain && mainTierPrice === 0 && !isLockedOld) {
             mainTierPrice = effectivePrice;
             mainTierId = t.id;
@@ -2303,15 +2304,25 @@ function StepSummary({ racers, data, setData, next, prev }) {
                     <p className="text-xs font-bold text-slate-400 ml-2 font-mono">—</p>
                   </div>
                 )}
-                {rb.items.map((item, i) => (
+                {rb.items.map((item, i) => {
+                  const isNewForLocked = !item.isLockedOld && rb.racer.locked;
+                  const badgeLabel = item.isLockedOld
+                    ? 'เดิม'
+                    : isNewForLocked
+                      ? (item.isMain ? 'ใหม่-หลัก' : 'ใหม่-เพิ่ม')
+                      : (item.isMain ? 'หลัก' : 'เพิ่ม');
+                  const badgeColor = item.isLockedOld
+                    ? 'bg-slate-200 text-slate-500'
+                    : isNewForLocked
+                      ? (item.isMain
+                          ? 'bg-gradient-to-r from-red-100 to-emerald-100 text-red-700 ring-1 ring-emerald-300'
+                          : 'bg-gradient-to-r from-amber-100 to-emerald-100 text-amber-700 ring-1 ring-emerald-300')
+                      : (item.isMain ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700');
+                  return (
                   <div key={i} className={`flex items-center justify-between px-3 py-2 ${item.isLockedOld ? 'bg-slate-50/60' : ''}`}>
                     <div className="min-w-0 flex items-center gap-2">
-                      <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold min-w-[56px] flex-shrink-0 ${
-                        item.isLockedOld
-                          ? 'bg-slate-200 text-slate-500'
-                          : item.isMain ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {item.isLockedOld ? 'เดิม' : item.isMain ? 'หลัก' : 'เพิ่ม'}
+                      <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold min-w-[68px] flex-shrink-0 ${badgeColor}`}>
+                        {badgeLabel}
                       </span>
                       <div className="min-w-0">
                         <p className={`text-xs font-bold truncate ${item.isLockedOld ? 'text-slate-500' : 'text-slate-900'}`}>
@@ -2339,7 +2350,8 @@ function StepSummary({ racers, data, setData, next, prev }) {
                       <p className="text-xs font-bold text-slate-900 ml-2 font-mono">{fmt(item.price)} ฿</p>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Coupon per racer */}

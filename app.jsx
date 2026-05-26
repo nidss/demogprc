@@ -4828,6 +4828,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('all'); // dateId
   const [filterTier, setFilterTier] = useState('all'); // tierId
+  const [filterPayment, setFilterPayment] = useState('all'); // 'all' | 'paid' | 'pending'
+  const [filterTax, setFilterTax] = useState('all'); // 'all' | 'yes' | 'no'
   const [sortBy, setSortBy] = useState('date-desc');
 
   // flatten registrations → 1 row per racer × day
@@ -4897,6 +4899,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             guardianName: reg.guardian?.name || '',
             couponCode: reg.couponCode || null,
             hasTaxInvoice: !!(reg.taxInvoice && reg.taxInvoice.enabled),
+            paymentStatus: reg.paymentStatus === 'pending' ? 'pending' : 'paid',
           });
         });
       });
@@ -4919,11 +4922,16 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     else if (filterStatus === 'pending') result = result.filter(r => !r.isCheckedIn);
     if (filterDate !== 'all') result = result.filter(r => r.raceDayId === filterDate);
     if (filterTier !== 'all') result = result.filter(r => (r.allTierIds || []).includes(filterTier));
+    if (filterPayment !== 'all') result = result.filter(r => r.paymentStatus === filterPayment);
+    if (filterTax !== 'all') {
+      if (filterTax === 'yes') result = result.filter(r => r.hasTaxInvoice);
+      else if (filterTax === 'no') result = result.filter(r => !r.hasTaxInvoice);
+    }
     if (sortBy === 'date-desc') result.sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));
     else if (sortBy === 'date-asc') result.sort((a, b) => new Date(a.dateRaw) - new Date(b.dateRaw));
     else if (sortBy === 'name') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
     return result;
-  }, [rows, search, filterGender, filterStatus, filterDate, filterTier, sortBy]);
+  }, [rows, search, filterGender, filterStatus, filterDate, filterTier, filterPayment, filterTax, sortBy]);
 
   const exportExcel = () => {
     if (typeof window.XLSX === 'undefined') {
@@ -4945,6 +4953,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'ชื่อผู้ปกครอง': r.guardianName || '-',
       'เบอร์ผู้ปกครอง': r.guardianPhone,
       'คูปอง': r.couponCode || '-',
+      'การชำระเงิน': r.paymentStatus === 'paid' ? 'ชำระแล้ว' : 'รอชำระ',
       'ใบกำกับภาษี': r.hasTaxInvoice ? 'ขอ' : '-',
       'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
       'Event': r.eventId === 'evt1' ? 'Grandprix Runbike Championship 2026 Event 2' : 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026',
@@ -4955,7 +4964,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     ws['!cols'] = [
       { wch: 6 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 14 },
       { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
-      { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 12 },
+      { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
       { wch: 22 }, { wch: 14 }, { wch: 8 }, { wch: 22 },
     ];
     const wb = window.XLSX.utils.book_new();
@@ -4993,8 +5002,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-          <div className="col-span-2 sm:col-span-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="col-span-2 lg:col-span-2">
             <Input
               placeholder="🔍 ค้นหาชื่อ / ชื่อเล่น / เลขอ้างอิง"
               value={search}
@@ -5019,9 +5028,19 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             ))}
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
-            <option value="all">ทุกสถานะ</option>
+            <option value="all">ทุกสถานะเช็คอิน</option>
             <option value="checked">เช็คอินแล้ว</option>
             <option value="pending">รอเช็คอิน</option>
+          </select>
+          <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกการชำระเงิน</option>
+            <option value="paid">ชำระแล้ว</option>
+            <option value="pending">รอชำระ</option>
+          </select>
+          <select value={filterTax} onChange={e => setFilterTax(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกใบกำกับภาษี</option>
+            <option value="yes">ขอใบกำกับภาษี</option>
+            <option value="no">ไม่ขอใบกำกับภาษี</option>
           </select>
         </div>
 
@@ -5047,7 +5066,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
         {filteredRows.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
         ) : (
-          <table className="text-sm" style={{ minWidth: '1500px', width: '100%' }}>
+          <table className="text-sm" style={{ minWidth: '1620px', width: '100%' }}>
             <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
               <tr>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ทำรายการ</th>
@@ -5063,6 +5082,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อผู้ปกครอง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">เบอร์ผู้ปกครอง</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">คูปอง</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">การชำระเงิน</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">ใบกำกับภาษี</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เช็คอิน</th>
               </tr>
@@ -5180,6 +5200,19 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                         </span>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {r.paymentStatus === 'paid' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold">
+                          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                          ชำระแล้ว
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                          รอชำระ
+                        </span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-center whitespace-nowrap">

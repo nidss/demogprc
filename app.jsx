@@ -4994,7 +4994,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                         <span className="text-[11px] text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold">
                         {r.mainTiers}
                       </span>
@@ -6230,15 +6230,12 @@ function App() {
             const standardEligible = eligible.filter(t => t.group === 'standard');
             const mainTier = standardEligible[0] || eligible[0];
             const picks = [mainTier.id];
-            // รุ่นเพิ่มเติม: 50% มี 1 รุ่น, 25% มี 2 รุ่น, 10% มี 3 รุ่น (เฉพาะวันแรกของ multi-day หรือ single-day)
+            // รุ่นเพิ่มเติม: deterministic ตาม index ของ registration เพื่อรับประกันว่ามีตัวอย่างหลากหลาย
+            // (i=0 → 3 รุ่น, i=1 → 2 รุ่น, i=2,3,4 → 1 รุ่น, i=5,6 → 0 รุ่น, แล้ววนใหม่)
             if (dIdx === 0) {
               const others = eligible.filter(t => t.id !== mainTier.id);
-              const rand = Math.random();
-              let addCount = 0;
-              if (rand < 0.10) addCount = 3;
-              else if (rand < 0.35) addCount = 2;
-              else if (rand < 0.85) addCount = 1;
-              // สุ่มเลือก addCount รุ่นจาก others (ไม่ซ้ำ)
+              const pattern = [3, 2, 2, 1, 1, 1, 0, 0]; // 8-step pattern: ~25% 2 รุ่น, ~12% 3 รุ่น
+              const addCount = pattern[i % pattern.length];
               const shuffled = [...others].sort(() => Math.random() - 0.5);
               for (let k = 0; k < Math.min(addCount, shuffled.length); k++) {
                 picks.push(shuffled[k].id);

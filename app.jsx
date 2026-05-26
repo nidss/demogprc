@@ -4459,7 +4459,12 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
   // KPIs (ใช้ filtered data)
   const totalRegs = filteredRegs.length;
   const totalRacers = filteredRegs.reduce((s, r) => s + r.racers.length, 0);
-  const totalRevenue = filteredRegs.reduce((s, r) => s + (r.total || 0), 0);
+  const totalExpected = filteredRegs.reduce((s, r) => s + (r.total || 0), 0); // ยอดรวมที่คาดว่าจะได้
+  const totalPaid = filteredRegs
+    .filter(r => r.paymentStatus !== 'pending')
+    .reduce((s, r) => s + (r.total || 0), 0); // ชำระแล้ว
+  const totalPending = totalExpected - totalPaid; // รอชำระ
+  const totalRevenue = totalPaid; // alias สำหรับใช้ในส่วนอื่น
   const checkInCount = filteredCheckIns.length;
   const checkInRate = totalRacers > 0 ? Math.round((checkInCount / totalRacers) * 100) : 0;
 
@@ -4557,12 +4562,14 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
         </div>
       )}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        <KpiCard label="การลงทะเบียน" value={totalRegs} unit="รายการ" icon={Tag} trend="+12%" color="from-blue-500 to-blue-700" />
-        <KpiCard label="จำนวนนักแข่ง" value={totalRacers} unit="คน" icon={User} trend="+8%" color="from-red-500 to-red-700" />
-        <KpiCard label="รายได้รวม" value={fmt(totalRevenue)} unit="บาท" icon={CreditCard} trend="+15%" color="from-green-500 to-green-700" />
-        <KpiCard label="เช็คอินแล้ว" value={checkInCount} unit={`${checkInRate}%`} icon={Check} trend={`${checkInRate}%`} color="from-amber-500 to-amber-700" trendIsRate />
+      {/* KPIs — 6 cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
+        <KpiCard label="การลงทะเบียน" value={totalRegs} unit="รายการ" icon={Tag} color="from-blue-500 to-blue-700" />
+        <KpiCard label="จำนวนนักแข่ง" value={totalRacers} unit="คน" icon={User} color="from-red-500 to-red-700" />
+        <KpiCard label="ชำระแล้ว" value={fmt(totalPaid)} unit="บาท" icon={CreditCard} trend="+15%" color="from-green-500 to-green-700" />
+        <KpiCard label="รอชำระ/ชำระไม่สำเร็จ" value={fmt(totalPending)} unit="บาท" icon={CreditCard} trend="+15%" color="from-yellow-500 to-yellow-600" />
+        <KpiCard label="ยอดรวมทั้งหมด" value={fmt(totalPaid)} subValue={fmt(totalExpected)} unit="บาท" icon={CreditCard} trend="+15%" color="from-orange-500 to-orange-700" />
+        <KpiCard label="เช็คอินแล้ว" value={checkInCount} subValue={totalRacers} unit={`${checkInRate}%`} icon={Check} trend={`${checkInRate}%`} color="from-amber-500 to-amber-700" trendIsRate />
       </div>
 
       {/* Tier Breakdown — สรุปแยกตามรุ่น */}
@@ -4753,7 +4760,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [search, setSearch] = useState('');
   const [filterGender, setFilterGender] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterAge, setFilterAge] = useState('all');
+  const [filterDate, setFilterDate] = useState('all'); // dateId
+  const [filterTier, setFilterTier] = useState('all'); // tierId
   const [sortBy, setSortBy] = useState('date-desc');
 
   // flatten registrations → 1 row per racer × day
@@ -4816,6 +4824,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
             additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
             additionalTiersList: additionalTiers, // array สำหรับ render +N badge + tooltip
+            allTierIds: tiersForDay, // tier ids ของวันนี้ — สำหรับ filter
             isCheckedIn, checkInTime: checkInRecord?.time,
             shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
             guardianPhone: reg.guardian?.phone || '-',
@@ -4842,21 +4851,13 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     if (filterGender !== 'all') result = result.filter(r => r.gender === filterGender);
     if (filterStatus === 'checked') result = result.filter(r => r.isCheckedIn);
     else if (filterStatus === 'pending') result = result.filter(r => !r.isCheckedIn);
-    if (filterAge !== 'all') {
-      const ageRanges = {
-        'u5': (a) => a !== null && a < 5,
-        '5-8': (a) => a !== null && a >= 5 && a < 8,
-        '8-12': (a) => a !== null && a >= 8 && a < 12,
-        '12+': (a) => a !== null && a >= 12,
-      };
-      const fn = ageRanges[filterAge];
-      if (fn) result = result.filter(r => fn(r.age));
-    }
+    if (filterDate !== 'all') result = result.filter(r => r.raceDayId === filterDate);
+    if (filterTier !== 'all') result = result.filter(r => (r.allTierIds || []).includes(filterTier));
     if (sortBy === 'date-desc') result.sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));
     else if (sortBy === 'date-asc') result.sort((a, b) => new Date(a.dateRaw) - new Date(b.dateRaw));
     else if (sortBy === 'name') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
     return result;
-  }, [rows, search, filterGender, filterStatus, filterAge, sortBy]);
+  }, [rows, search, filterGender, filterStatus, filterDate, filterTier, sortBy]);
 
   const exportExcel = () => {
     if (typeof window.XLSX === 'undefined') {
@@ -4926,7 +4927,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
           <div className="col-span-2 sm:col-span-2">
             <Input
               placeholder="🔍 ค้นหาชื่อ / ชื่อเล่น / เลขอ้างอิง"
@@ -4939,12 +4940,17 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             <option value="M">ชาย</option>
             <option value="F">หญิง</option>
           </select>
-          <select value={filterAge} onChange={e => setFilterAge(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
-            <option value="all">ทุกอายุ</option>
-            <option value="u5">น้อยกว่า 5 ปี</option>
-            <option value="5-8">5 - 7 ปี</option>
-            <option value="8-12">8 - 11 ปี</option>
-            <option value="12+">12 ปีขึ้นไป</option>
+          <select value={filterDate} onChange={e => setFilterDate(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกวันแข่ง</option>
+            {RACE_DATES.map(d => (
+              <option key={d.id} value={d.id}>{d.short}</option>
+            ))}
+          </select>
+          <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกรุ่น</option>
+            {RACE_TIERS.map(t => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
             <option value="all">ทุกสถานะ</option>
@@ -5300,7 +5306,7 @@ function RegistrationDetailModal({ open, onClose, registration, checkIns }) {
   );
 }
 
-function KpiCard({ label, value, unit, icon: Icon, trend, color, trendIsRate }) {
+function KpiCard({ label, value, unit, subValue, icon: Icon, trend, color, trendIsRate }) {
   return (
     <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5">
       <div className="flex items-start justify-between mb-3">
@@ -5315,8 +5321,11 @@ function KpiCard({ label, value, unit, icon: Icon, trend, color, trendIsRate }) 
           </span>
         )}
       </div>
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight leading-none">{value}</p>
+      <p className="text-[11px] font-medium text-slate-500 mb-1">{label}</p>
+      <p className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight leading-none">
+        {value}
+        {subValue && <span className="text-base font-medium text-slate-400 ml-1">/{subValue}</span>}
+      </p>
       <p className="text-[10px] text-slate-500 mt-1">{unit}</p>
     </div>
   );

@@ -4599,7 +4599,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               key={evt.id}
               active={selectedEventId === evt.id}
               onClick={() => setSelectedEventId(evt.id)}
-              label={evt.id === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026'}
+              label={evt.id === 'evt1' ? 'Grandprix Runbike Championship 2026 Event 2' : 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026'}
               sublabel={`${evt.regsCount} รายการ`}
               count={evt.racersCount}
               isFeatured={evt.id === 'evt2'}
@@ -4784,7 +4784,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
         <RegistrationsTable
           registrations={filteredRegs}
           checkIns={checkIns}
-          eventLabel={selectedEventId === 'all' ? null : (currentEvent ? (currentEvent.id === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026') : null)}
+          eventLabel={selectedEventId === 'all' ? null : (currentEvent ? (currentEvent.id === 'evt1' ? 'Grandprix Runbike Championship 2026 Event 2' : 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026') : null)}
         />
       </div>
     </div>
@@ -4796,17 +4796,17 @@ function EventTab({ active, onClick, label, sublabel, count, isFeatured }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all whitespace-nowrap ${
+      className={`relative flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
         active
           ? 'bg-gradient-to-r from-red-600 to-red-700 border-red-700 text-white shadow-md shadow-red-600/30'
           : 'bg-white border-slate-200 text-slate-700 hover:border-red-200 hover:shadow-sm'
       }`}
     >
-      <div className="text-left">
-        <p className={`text-xs font-bold leading-none ${active ? 'text-white' : 'text-slate-900'}`}>{label}</p>
-        <p className={`text-[10px] mt-0.5 leading-none ${active ? 'text-red-100' : 'text-slate-500'}`}>{sublabel}</p>
+      <div className="text-left max-w-[240px]">
+        <p className={`text-[11px] font-bold leading-tight ${active ? 'text-white' : 'text-slate-900'}`}>{label}</p>
+        <p className={`text-[10px] mt-0.5 leading-none whitespace-nowrap ${active ? 'text-red-100' : 'text-slate-500'}`}>{sublabel}</p>
       </div>
-      <span className={`inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md text-[11px] font-black ${
+      <span className={`inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md text-[11px] font-black flex-shrink-0 ${
         active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-900'
       }`}>
         {count}
@@ -4947,7 +4947,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'คูปอง': r.couponCode || '-',
       'ใบกำกับภาษี': r.hasTaxInvoice ? 'ขอ' : '-',
       'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
-      'Event': r.eventId === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026',
+      'Event': r.eventId === 'evt1' ? 'Grandprix Runbike Championship 2026 Event 2' : 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026',
       'ประเทศ': r.country || '-',
       'ทีม': r.teamName || '-',
     }));
@@ -5931,7 +5931,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  {evt.id === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026'}
+                  {evt.id === 'evt1' ? 'Grandprix Runbike Championship 2026 Event 2' : 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026'}
                   <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md text-[10px] font-black ${
                     isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-900'
                   }`}>{racersForEvent}</span>
@@ -6227,7 +6227,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                             </p>
                             {ev && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-[9px] font-bold uppercase tracking-wider">
-                                {ev.id === 'evt1' ? 'GPRC E2' : 'GPRC'}
+                                {ev.id === 'evt1' ? 'Grandprix Runbike Championship 2026 Event 2' : 'GRANDPRIX RUNBIKE CHAMPIONSHIP 2026'}
                               </span>
                             )}
                           </div>

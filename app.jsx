@@ -5383,28 +5383,10 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">เริ่มงานหน้าสนาม</p>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Check-in หน้างาน</h1>
-          <p className="text-sm text-slate-500 mt-1">สแกน QR Code ของผู้แข่งเพื่อบันทึกการเข้าร่วม</p>
-        </div>
-        {/* Today selector — สำหรับ demo: เลือกวันที่ "เสมือนวันนี้" */}
-        <div className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 shadow-sm">
-          <div className="text-right">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">วันแข่ง (วันนี้)</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">เช็คอินได้เฉพาะวันที่เลือก</p>
-          </div>
-          <select
-            value={todayDateId || ''}
-            onChange={e => setTodayDateId(e.target.value)}
-            className="px-3 h-9 text-sm font-bold rounded-md border border-red-300 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none cursor-pointer"
-          >
-            {RACE_DATES.map(d => (
-              <option key={d.id} value={d.id}>{d.short}</option>
-            ))}
-          </select>
-        </div>
+      <div className="mb-5">
+        <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1">เริ่มงานหน้าสนาม</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Check-in หน้างาน</h1>
+        <p className="text-sm text-slate-500 mt-1">สแกน QR Code ของผู้แข่งเพื่อบันทึกการเข้าร่วม</p>
       </div>
 
       {/* Tabs */}
@@ -6241,10 +6223,19 @@ function App() {
             const standardEligible = eligible.filter(t => t.group === 'standard');
             const mainTier = standardEligible[0] || eligible[0];
             const picks = [mainTier.id];
-            // วันแรก: 40% มีรุ่นเพิ่มเติม (Open)
-            if (dIdx === 0 && Math.random() < 0.4) {
+            // รุ่นเพิ่มเติม: 50% มี 1 รุ่น, 25% มี 2 รุ่น, 10% มี 3 รุ่น (เฉพาะวันแรกของ multi-day หรือ single-day)
+            if (dIdx === 0) {
               const others = eligible.filter(t => t.id !== mainTier.id);
-              if (others.length > 0) picks.push(pick(others).id);
+              const rand = Math.random();
+              let addCount = 0;
+              if (rand < 0.10) addCount = 3;
+              else if (rand < 0.35) addCount = 2;
+              else if (rand < 0.85) addCount = 1;
+              // สุ่มเลือก addCount รุ่นจาก others (ไม่ซ้ำ)
+              const shuffled = [...others].sort(() => Math.random() - 0.5);
+              for (let k = 0; k < Math.min(addCount, shuffled.length); k++) {
+                picks.push(shuffled[k].id);
+              }
             }
             selectedRaces[day] = picks;
           });

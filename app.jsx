@@ -2187,14 +2187,18 @@ function StepSummary({ racers, data, setData, next, prev }) {
       const items = [];
       let mainTierPrice = 0;
       let mainTierId = null;
+      const originalRaces = r.originalRaces || {};
       r.selectedDates.forEach(did => {
         const dateObj = RACE_DATES.find(d => d.id === did);
+        const lockedTiersForDay = originalRaces[did] || [];
         (r.selectedRaces[did] || []).forEach(tid => {
           const t = RACE_TIERS.find(x => x.id === tid);
           if (!t) return;
+          const isLockedOld = lockedTiersForDay.includes(tid);
+          const effectivePrice = isLockedOld ? 0 : t.price; // รุ่นเก่าจ่ายแล้ว
           const isMain = t.group === 'standard';
-          if (isMain && mainTierPrice === 0) {
-            mainTierPrice = t.price;
+          if (isMain && mainTierPrice === 0 && !isLockedOld) {
+            mainTierPrice = effectivePrice;
             mainTierId = t.id;
           }
           items.push({
@@ -2203,11 +2207,13 @@ function StepSummary({ racers, data, setData, next, prev }) {
             tierName: t.name || t.label,
             tierId: t.id,
             price: t.price,
+            effectivePrice,
             isMain,
+            isLockedOld,
           });
         });
       });
-      const subtotal = items.reduce((s, i) => s + i.price, 0);
+      const subtotal = items.reduce((s, i) => s + i.effectivePrice, 0);
 
       // คำนวณส่วนลด per-racer
       const couponCode = racerCoupons[r.id];
@@ -2298,19 +2304,40 @@ function StepSummary({ racers, data, setData, next, prev }) {
                   </div>
                 )}
                 {rb.items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-2">
+                  <div key={i} className={`flex items-center justify-between px-3 py-2 ${item.isLockedOld ? 'bg-slate-50/60' : ''}`}>
                     <div className="min-w-0 flex items-center gap-2">
                       <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold min-w-[56px] flex-shrink-0 ${
-                        item.isMain ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        item.isLockedOld
+                          ? 'bg-slate-200 text-slate-500'
+                          : item.isMain ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                       }`}>
-                        {item.isMain ? 'หลัก' : 'เพิ่ม'}
+                        {item.isLockedOld ? 'เดิม' : item.isMain ? 'หลัก' : 'เพิ่ม'}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs text-slate-900 font-bold truncate">รุ่น {item.tier}</p>
-                        <p className="text-[10px] text-slate-500">{item.date}</p>
+                        <p className={`text-xs font-bold truncate ${item.isLockedOld ? 'text-slate-500' : 'text-slate-900'}`}>
+                          รุ่น {item.tier}
+                        </p>
+                        <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                          {item.date}
+                          {item.isLockedOld && (
+                            <>
+                              <span className="text-slate-300">·</span>
+                              <span className="inline-flex items-center gap-0.5 text-green-700 font-semibold">
+                                <Check className="w-2.5 h-2.5" strokeWidth={3} /> ชำระแล้ว
+                              </span>
+                            </>
+                          )}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-xs font-bold text-slate-900 ml-2 font-mono">{fmt(item.price)} ฿</p>
+                    {item.isLockedOld ? (
+                      <div className="ml-2 text-right flex-shrink-0">
+                        <p className="text-[10px] text-slate-400 line-through font-mono">{fmt(item.price)} ฿</p>
+                        <p className="text-[10px] text-green-700 font-bold">ไม่คิดซ้ำ</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-bold text-slate-900 ml-2 font-mono">{fmt(item.price)} ฿</p>
+                    )}
                   </div>
                 ))}
               </div>

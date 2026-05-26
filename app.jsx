@@ -2535,6 +2535,59 @@ function StepPayment({ data, setData, next, prev, savedGuardian }) {
           )}
         </div>
 
+        {/* Payment Terms & Conditions */}
+        <div className="rounded-xl border-2 border-amber-200 bg-amber-50/40 overflow-hidden">
+          <div className="px-4 py-2.5 bg-amber-100/60 border-b border-amber-200 flex items-center gap-2">
+            <svg className="w-4 h-4 text-amber-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z" />
+            </svg>
+            <p className="text-xs font-bold text-amber-900">เงื่อนไขการชำระ</p>
+          </div>
+          <div className="p-4 space-y-3 text-[12px] leading-relaxed">
+            {/* Item 1 */}
+            <div>
+              <p className="font-bold text-slate-900 mb-1">
+                <span className="text-amber-700 mr-1">1.</span>
+                การตรวจสอบยอดเงิน <span className="font-normal text-slate-500">(Verification of the registration fee)</span>
+              </p>
+              <p className="text-slate-700 pl-5">
+                • ผู้สมัคร/ผู้ชำระเงิน มีหน้าที่ตรวจสอบยอดเงินที่ต้องชำระให้ถูกต้องครบถ้วนก่อนทำการโอนเงินทุกครั้ง
+              </p>
+              <p className="text-slate-500 italic pl-5 mt-0.5">
+                Please ensure you verify the correct total amount payable before proceeding with any money transfer.
+              </p>
+            </div>
+
+            {/* Item 2 */}
+            <div>
+              <p className="font-bold text-slate-900 mb-1">
+                <span className="text-amber-700 mr-1">2.</span>
+                การตรวจสอบหลักฐานการโอนเงิน (สลิป) <span className="font-normal text-slate-500">(Verification of proof of payment slip)</span>
+              </p>
+              <p className="text-slate-700 pl-5">
+                • กรุณาตรวจสอบความถูกต้องและความชัดเจนของข้อมูลบนสลิปโอนเงิน (เช่น วันที่, เวลา, จำนวนเงิน, บัญชีผู้รับ) ก่อนทำการแนบไฟล์หรือส่งเป็นหลักฐาน
+              </p>
+              <p className="text-slate-500 italic pl-5 mt-0.5">
+                Kindly verify the accuracy and clarity of the information on your transfer slip (e.g., date, time, amount, recipient account) before attaching or submitting it as proof of payment.
+              </p>
+            </div>
+
+            {/* Item 3 */}
+            <div>
+              <p className="font-bold text-slate-900 mb-1">
+                <span className="text-amber-700 mr-1">3.</span>
+                นโยบายการคืนเงิน <span className="font-normal text-slate-500">(Refund Policy)</span>
+              </p>
+              <p className="text-slate-700 pl-5">
+                • ทางผู้จัดการแข่งขันขอสงวนสิทธิ์ในการไม่คืนเงินค่าสมัครในทุกกรณี
+              </p>
+              <p className="text-slate-500 italic pl-5 mt-0.5">
+                The competition organizer reserves the right to make entry fees non-refundable in all cases.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <p className="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-900" strokeWidth={1.5} />
           การชำระเงินเข้ารหัสและคุ้มครองโดย BEAM

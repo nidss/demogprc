@@ -1093,6 +1093,19 @@ function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
           return setErr(`นักแข่ง "${r.thFirstName}" ต้องเลือกรุ่นในทุกวันที่ลง`);
         }
       }
+      // ถ้าโหมด locked → ต้องเพิ่มรุ่นใหม่อย่างน้อย 1 รุ่น (เกินจาก originalRaces)
+      if (r.locked && r.originalRaces) {
+        let hasNewTier = false;
+        for (const did of r.selectedDates) {
+          const orig = r.originalRaces[did] || [];
+          const now = r.selectedRaces[did] || [];
+          if (now.length > orig.length) { hasNewTier = true; break; }
+          if (now.some(tid => !orig.includes(tid))) { hasNewTier = true; break; }
+        }
+        if (!hasNewTier) {
+          return setErr(`กรุณาเพิ่มรุ่นใหม่อย่างน้อย 1 รุ่นสำหรับ "${r.thFirstName}"`);
+        }
+      }
     }
     setErr('');
     next();
@@ -1292,6 +1305,8 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
   }, [r.birthDate, r.gender]);
 
   const toggleDate = (dateId) => {
+    // ห้ามลบวันที่อยู่ใน originalDates
+    if ((r.originalDates || []).includes(dateId) && r.selectedDates.includes(dateId)) return;
     const has = r.selectedDates.includes(dateId);
     const newDates = has ? r.selectedDates.filter(d => d !== dateId) : [...r.selectedDates, dateId];
     const newRaces = { ...r.selectedRaces };
@@ -1302,6 +1317,8 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
   const toggleTier = (dateId, tierId) => {
     const current = r.selectedRaces[dateId] || [];
     const has = current.includes(tierId);
+    // ห้ามลบ tier ที่อยู่ใน originalRaces
+    if (has && (r.originalRaces?.[dateId] || []).includes(tierId)) return;
     const newList = has ? current.filter(t => t !== tierId) : [...current, tierId];
     onUpdate({ selectedRaces: { ...r.selectedRaces, [dateId]: newList } });
   };
@@ -1527,6 +1544,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                   selected={r.selectedDates}
                   onToggle={toggleDate}
                   birthDate={r.birthDate}
+                  lockedDates={r.originalDates || []}
                 />
               </div>
 
@@ -1544,6 +1562,8 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                           gender={r.gender}
                           selected={r.selectedRaces[d.id] || []}
                           onToggle={(tid) => toggleTier(d.id, tid)}
+                          lockedTierIds={r.originalRaces?.[d.id] || []}
+                          isLockedDate={(r.originalDates || []).includes(d.id)}
                         />
                       ))}
                     </div>
@@ -1694,7 +1714,7 @@ function DocumentUpload({ files, onChange }) {
   );
 }
 
-function DatePicker({ dates, selected, onToggle, birthDate }) {
+function DatePicker({ dates, selected, onToggle, birthDate, lockedDates = [] }) {
   // จัด group ตามเดือน
   const byMonth = {};
   dates.forEach(d => {
@@ -1748,23 +1768,33 @@ function DatePicker({ dates, selected, onToggle, birthDate }) {
                 {days.map((d, idx) => {
                   const isSel = selected.includes(d.id);
                   const isSat = d.weekday === 'เสาร์';
+                  const isLocked = lockedDates.includes(d.id);
                   return (
                     <button
                       key={d.id}
                       type="button"
-                      onClick={() => onToggle(d.id)}
-                      className={`px-3 py-2.5 rounded-md border text-left transition ${
-                        isSel
-                          ? 'bg-slate-900 border-slate-900 text-white'
-                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                      onClick={() => !isLocked && onToggle(d.id)}
+                      disabled={isLocked}
+                      className={`px-3 py-2.5 rounded-md border text-left transition relative ${
+                        isLocked
+                          ? 'bg-slate-100 border-slate-300 text-slate-500 cursor-not-allowed'
+                          : isSel
+                            ? 'bg-slate-900 border-slate-900 text-white'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
                       }`}
                     >
-                      <div className={`text-[10px] uppercase tracking-wider font-bold ${isSel ? 'text-slate-300' : 'text-slate-400'}`}>
+                      <div className={`text-[10px] uppercase tracking-wider font-bold flex items-center gap-1 ${
+                        isLocked ? 'text-slate-400' : isSel ? 'text-slate-300' : 'text-slate-400'
+                      }`}>
                         สนามที่ {idx + 1}
+                        {isLocked && <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />}
                       </div>
                       <div className="text-base font-semibold leading-tight mt-0.5">
                         {isSat ? 'เสาร์' : 'อาทิตย์'} {d.day}
                       </div>
+                      {isLocked && (
+                        <p className="text-[9px] mt-0.5 text-slate-500">ลงไว้แล้ว · เพิ่มรุ่นได้</p>
+                      )}
                     </button>
                   );
                 })}
@@ -1803,7 +1833,7 @@ function DatePicker({ dates, selected, onToggle, birthDate }) {
   );
 }
 
-function DateTierPicker({ date, birthDate, gender, selected, onToggle }) {
+function DateTierPicker({ date, birthDate, gender, selected, onToggle, lockedTierIds = [], isLockedDate = false }) {
   const [addOpen, setAddOpen] = useState(false);
   // คำนวณ eligible ของวันนี้
   const eligible = useMemo(() => getEligibleTiers(birthDate, gender, date), [birthDate, gender, date]);
@@ -1814,6 +1844,9 @@ function DateTierPicker({ date, birthDate, gender, selected, onToggle }) {
   const additionalTierIds = selected.slice(1);
   // รุ่นที่ยังไม่ได้เลือก
   const availableToAdd = eligible.filter(t => !selected.includes(t.id));
+  // helper เช็คว่ารุ่นนี้ locked หรือไม่
+  const isLockedTier = (tid) => lockedTierIds.includes(tid);
+  const mainIsLocked = mainTierId && isLockedTier(mainTierId);
 
   // helper เพื่อ select main tier (replace ตัวแรก)
   const selectMain = (tid) => {
@@ -1890,19 +1923,31 @@ function DateTierPicker({ date, birthDate, gender, selected, onToggle }) {
                           {gl.label}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">{t.name || t.label}</p>
+                          <p className="text-sm font-bold text-slate-900 truncate flex items-center gap-1.5">
+                            {t.name || t.label}
+                            {mainIsLocked && <Lock className="w-3 h-3 text-slate-400 flex-shrink-0" strokeWidth={2.5} />}
+                          </p>
                           {t.range && <p className="text-[10px] text-slate-500">{t.range}</p>}
                         </div>
                         <span className="text-xs font-bold text-red-700">{fmt(t.price)} ฿</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={removeMain}
-                        className="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:bg-red-100 hover:text-red-600 transition"
-                        title="เปลี่ยนรุ่นหลัก"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                      {mainIsLocked ? (
+                        <span
+                          className="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-300 cursor-not-allowed"
+                          title="รุ่นนี้ลงทะเบียนไปแล้ว ไม่สามารถลบได้"
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={removeMain}
+                          className="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:bg-red-100 hover:text-red-600 transition"
+                          title="เปลี่ยนรุ่นหลัก"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </>
                   );
                 })()}
@@ -1945,18 +1990,28 @@ function DateTierPicker({ date, birthDate, gender, selected, onToggle }) {
                     const t = RACE_TIERS.find(x => x.id === tid);
                     if (!t) return null;
                     const gl = groupLabel(t);
+                    const tierLocked = isLockedTier(tid);
                     return (
                       <span key={tid} className={`inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-md border-2 text-xs font-bold ${gl.color}`}>
                         {t.name || t.label}
                         <span className="font-normal opacity-70">· {fmt(t.price)} ฿</span>
-                        <button
-                          type="button"
-                          onClick={() => removeAdditional(tid)}
-                          className="ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded hover:bg-black/10 transition"
-                          title="ลบรุ่นนี้"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        {tierLocked ? (
+                          <span
+                            className="ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded text-current opacity-50 cursor-not-allowed"
+                            title="รุ่นนี้ลงทะเบียนไปแล้ว ไม่สามารถลบได้"
+                          >
+                            <Lock className="w-3 h-3" />
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removeAdditional(tid)}
+                            className="ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded hover:bg-black/10 transition"
+                            title="ลบรุ่นนี้"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </span>
                     );
                   })}
@@ -6962,19 +7017,24 @@ function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser
     eventId: selectedEvent?.id || null,
     eventTitle: selectedEvent?.title || null,
   });
-  // ถ้ามี lockedRacer → ใช้ racer นั้นเป็นเริ่มต้น + lock ข้อมูลส่วนตัว + reset selection
+  // ถ้ามี lockedRacer → ใช้ racer นั้นเป็นเริ่มต้น + lock ข้อมูลส่วนตัว + เก็บรุ่น/วันเดิมเป็น "locked tiers"
   const [racers, setRacers] = useState(() => {
     if (lockedRacer) {
+      const origRaces = lockedRacer.selectedRaces || {};
+      const origDates = lockedRacer.selectedDates || [];
       return [{
         ...lockedRacer,
         id: Date.now() + Math.random(), // ใช้ id ใหม่เพื่อไม่ชน
-        selectedDates: [],
-        selectedRaces: {},
+        selectedDates: [...origDates],
+        selectedRaces: Object.fromEntries(origDates.map(did => [did, [...(origRaces[did] || [])]])),
         // ถ้าไม่มี documents → ใส่ placeholder เพราะนักแข่งเดิมยืนยันตัวตนไปแล้ว
         documents: (lockedRacer.documents && lockedRacer.documents.length > 0)
           ? lockedRacer.documents
           : [{ name: 'ยืนยันแล้วจากการลงทะเบียนเดิม', size: 0, type: 'placeholder', dataUrl: '' }],
         locked: true, // flag — ป้องกันแก้ไขข้อมูลส่วนตัว
+        // เก็บรุ่นเก่า + วันเก่า ไว้สำหรับ lock
+        originalRaces: Object.fromEntries(origDates.map(did => [did, [...(origRaces[did] || [])]])),
+        originalDates: [...origDates],
       }];
     }
     return [newRacer()];

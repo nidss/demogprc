@@ -1104,7 +1104,7 @@ function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
 
       <div className="space-y-3">
         {/* Top banner: เลือกจากที่บันทึกไว้ */}
-        {availableSaved.length > 0 && (
+        {availableSaved.length > 0 && !racers.some(r => r.locked) && (
           <button
             onClick={() => setPickerOpen(true)}
             className="w-full p-3 rounded-xl border-2 border-red-200 bg-gradient-to-r from-red-50 to-red-50/50 hover:border-red-400 hover:from-red-100 hover:to-red-50 text-left transition group flex items-center gap-3"
@@ -1136,12 +1136,14 @@ function StepRacers({ racers, setRacers, savedRacers = [], next, prev }) {
           />
         ))}
 
-        <button
-          onClick={addRacer}
-          className="w-full h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
-        >
-          <Plus className="w-4 h-4" /> เพิ่มนักแข่งอีกคน
-        </button>
+        {!racers.some(r => r.locked) && (
+          <button
+            onClick={addRacer}
+            className="w-full h-11 border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900 text-slate-500 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1.5 transition"
+          >
+            <Plus className="w-4 h-4" /> เพิ่มนักแข่งอีกคน
+          </button>
+        )}
 
 
         {err && <Alert>{err}</Alert>}
@@ -1277,6 +1279,7 @@ function CountrySelect({ value, onChange }) {
 
 function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
   const [open, setOpen] = useState(true);
+  const locked = !!r.locked;
   const ageYM = calcAgeYM(r.birthDate);
   // eligible = union ของทุกวันแข่ง (เพราะแต่ละวันมี eligible ต่างกัน) — ใช้สำหรับ guard เท่านั้น
   const eligible = useMemo(() => {
@@ -1334,7 +1337,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
           </div>
         </button>
         <div className="flex items-center gap-1 ml-2">
-          {canRemove && (
+          {canRemove && !locked && (
             <button
               type="button"
               onClick={onRemove}
@@ -1357,8 +1360,21 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
 
       {open && (
         <div className="p-4 space-y-4">
+          {/* Locked banner — แสดงเมื่อเป็นโหมด "เพิ่มรุ่น" */}
+          {locked && (
+            <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-3 flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-blue-900">โหมดเพิ่มรุ่น</p>
+                <p className="text-[11px] text-blue-700 mt-0.5">
+                  ข้อมูลส่วนตัวของนักแข่งถูกล็อกไว้ ไม่สามารถแก้ไขได้ — เพิ่มเฉพาะรุ่น/วันแข่งได้เท่านั้น
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ข้อมูลส่วนตัว */}
-          <div>
+          <div className={locked ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={locked || undefined}>
             <SectionLabel>ข้อมูลส่วนตัว</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -1471,7 +1487,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
           <Divider />
 
           {/* เอกสารยืนยันตัวตน */}
-          <div>
+          <div className={locked ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={locked || undefined}>
             <SectionLabel>เอกสารยืนยันตัวตน <span className="text-red-500 font-normal">*</span></SectionLabel>
             <DocumentUpload
               files={r.documents || []}
@@ -1480,7 +1496,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
           </div>
 
           {/* สมาชิกรายปี */}
-          <div className="rounded-xl border-2 border-amber-200 bg-amber-50/40 p-3">
+          <div className={`rounded-xl border-2 border-amber-200 bg-amber-50/40 p-3 ${locked ? 'pointer-events-none opacity-60 select-none' : ''}`} aria-disabled={locked || undefined}>
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -4094,7 +4110,7 @@ function InfoRow({ label, value, icon: Icon }) {
 // ============================================================
 // HISTORY PAGE
 // ============================================================
-function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSelectRegistration, embedded }) {
+function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSelectRegistration, onAddTier, embedded }) {
   const wrapperClass = embedded ? '' : 'max-w-4xl mx-auto px-4 sm:px-6 py-8';
   return (
     <div className={wrapperClass}>
@@ -4149,7 +4165,7 @@ function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSel
                 </div>
 
                 <div className="border-t border-slate-100 pt-3 mb-3">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">รายชื่อนักแข่ง · คลิกเพื่อดูบัตรนักแข่ง + QR</p>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">รายชื่อนักแข่ง</p>
                   <div className="space-y-2">
                     {reg.racers.map((racer, ri) => {
                       const tierLabels = [];
@@ -4175,28 +4191,50 @@ function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSel
                       }
 
                       return (
-                        <button
+                        <div
                           key={ri}
-                          onClick={() => onSelectRegistration(reg, racer)}
-                          className="w-full text-left px-3.5 py-3 rounded-xl border border-slate-200 bg-white hover:border-red-300 hover:shadow-md transition group"
+                          className="px-3.5 py-3 rounded-xl border border-slate-200 bg-white hover:border-red-300 hover:shadow-md transition group"
                         >
                           <div className="flex items-start gap-3">
-                            <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm shadow-red-500/30 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => onSelectRegistration(reg, racer)}
+                              className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-black shadow-sm shadow-red-500/30 flex-shrink-0 hover:scale-105 transition"
+                              aria-label="ดูบัตรนักแข่ง + QR"
+                            >
                               #{ri + 1}
-                            </span>
+                            </button>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
-                                <div className="min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectRegistration(reg, racer)}
+                                  className="min-w-0 text-left"
+                                >
                                   <p className="text-sm font-bold text-slate-900 truncate">
                                     {racer.thFirstName} {racer.thLastName}
                                   </p>
                                   <p className="text-[11px] text-slate-500 truncate">
                                     {racer.enFirstName} {racer.enLastName}
                                   </p>
+                                </button>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => onAddTier && onAddTier(reg, racer)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold transition shadow-sm whitespace-nowrap"
+                                  >
+                                    <Plus className="w-3 h-3" strokeWidth={2.5} />
+                                    เพิ่มรุ่น
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onSelectRegistration(reg, racer)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition whitespace-nowrap"
+                                  >
+                                    ดู QR <ArrowRight className="w-3 h-3" />
+                                  </button>
                                 </div>
-                                <span className="text-[10px] text-red-600 font-bold opacity-0 group-hover:opacity-100 transition flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-                                  ดู QR <ArrowRight className="w-3 h-3" />
-                                </span>
                               </div>
 
                               {/* meta line: เพศ · อายุ · จำนวน */}
@@ -4232,7 +4270,7 @@ function HistoryPage({ user, registrations, onRegisterClick, onBackToHome, onSel
                               </div>
                             </div>
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -6382,6 +6420,7 @@ function App() {
   const [qrModal, setQrModal] = useState({ open: false, registration: null, racer: null });
   const [eventSelectOpen, setEventSelectOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [lockedRacer, setLockedRacer] = useState(null); // racer object สำหรับ "เพิ่มรุ่น"
 
   const openLogin = (mode = 'login') => {
     setLoginMode(mode);
@@ -6803,13 +6842,14 @@ function App() {
                 />
                 <div className="relative max-w-2xl mx-auto px-4 py-6 sm:py-8">
                   <RaceRegistration
-                    onBackToHome={() => setView(user ? 'history' : 'landing')}
-                    onComplete={handleRegistrationComplete}
+                    onBackToHome={() => { setLockedRacer(null); setView(user ? 'history' : 'landing'); }}
+                    onComplete={(payload) => { setLockedRacer(null); handleRegistrationComplete(payload); }}
                     startStep={user ? 2 : 1}
                     prefillUser={user}
                     selectedEvent={selectedEvent}
                     savedRacers={savedRacers}
                     savedGuardian={savedGuardian}
+                    lockedRacer={lockedRacer}
                   />
                 </div>
               </div>
@@ -6850,6 +6890,13 @@ function App() {
                         onRegisterClick={() => setEventSelectOpen(true)}
                         onBackToHome={() => setView('landing')}
                         onSelectRegistration={(reg, racer) => setQrModal({ open: true, registration: reg, racer })}
+                        onAddTier={(reg, racer) => {
+                          // หา event ที่นักแข่งคนนี้ลงไว้
+                          const ev = EVENTS.find(e => e.id === reg.eventId) || EVENTS[0];
+                          setSelectedEvent(ev);
+                          setLockedRacer(racer);
+                          setView('register');
+                        }}
                         embedded
                       />
                     )}
@@ -6901,7 +6948,7 @@ function App() {
 // ============================================================
 // MAIN APP (multi-step registration flow)
 // ============================================================
-function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent, savedRacers = [], savedGuardian = null }) {
+function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser, selectedEvent, savedRacers = [], savedGuardian = null, lockedRacer = null }) {
   const [step, setStep] = useState(startStep);
   const [data, setData] = useState({
     username: prefillUser?.username || '',
@@ -6915,7 +6962,23 @@ function RaceRegistration({ onBackToHome, onComplete, startStep = 1, prefillUser
     eventId: selectedEvent?.id || null,
     eventTitle: selectedEvent?.title || null,
   });
-  const [racers, setRacers] = useState([newRacer()]);
+  // ถ้ามี lockedRacer → ใช้ racer นั้นเป็นเริ่มต้น + lock ข้อมูลส่วนตัว + reset selection
+  const [racers, setRacers] = useState(() => {
+    if (lockedRacer) {
+      return [{
+        ...lockedRacer,
+        id: Date.now() + Math.random(), // ใช้ id ใหม่เพื่อไม่ชน
+        selectedDates: [],
+        selectedRaces: {},
+        // ถ้าไม่มี documents → ใส่ placeholder เพราะนักแข่งเดิมยืนยันตัวตนไปแล้ว
+        documents: (lockedRacer.documents && lockedRacer.documents.length > 0)
+          ? lockedRacer.documents
+          : [{ name: 'ยืนยันแล้วจากการลงทะเบียนเดิม', size: 0, type: 'placeholder', dataUrl: '' }],
+        locked: true, // flag — ป้องกันแก้ไขข้อมูลส่วนตัว
+      }];
+    }
+    return [newRacer()];
+  });
 
   const next = () => setStep(s => Math.min(s + 1, 6));
   const prev = () => setStep(s => Math.max(s - 1, startStep));

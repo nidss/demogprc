@@ -4703,18 +4703,18 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
           icon={Check}
           color="from-amber-500 to-amber-700"
           detail={
-            <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
               {RACE_DATES.map(d => {
                 const total = racersPerDay[d.id] || 0;
                 const checked = checkInsPerDay[d.id] || 0;
                 return (
-                  <div key={d.id} className="flex items-center justify-between gap-1">
-                    <span className="font-semibold text-slate-700">{d.weekday === 'เสาร์' ? 'ส.' : 'อา.'}</span>
+                  <span key={d.id} className="inline-flex items-center gap-1">
+                    <span className="font-semibold text-slate-700">{d.weekday}</span>
                     <span>
                       <span className="font-bold text-green-700">{checked}</span>
                       <span className="text-slate-400">/{total}</span>
                     </span>
-                  </div>
+                  </span>
                 );
               })}
             </div>

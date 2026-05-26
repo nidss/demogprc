@@ -4996,7 +4996,6 @@ function EventTab({ active, onClick, label, sublabel, count, isFeatured }) {
 // ============================================================
 function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [search, setSearch] = useState('');
-  const [filterGender, setFilterGender] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('all'); // dateId
   const [filterTier, setFilterTier] = useState('all'); // tierId
@@ -5089,7 +5088,6 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
         r.refId.toLowerCase().includes(q)
       );
     }
-    if (filterGender !== 'all') result = result.filter(r => r.gender === filterGender);
     if (filterStatus === 'checked') result = result.filter(r => r.isCheckedIn);
     else if (filterStatus === 'pending') result = result.filter(r => !r.isCheckedIn);
     if (filterDate !== 'all') result = result.filter(r => r.raceDayId === filterDate);
@@ -5103,7 +5101,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     else if (sortBy === 'date-asc') result.sort((a, b) => new Date(a.dateRaw) - new Date(b.dateRaw));
     else if (sortBy === 'name') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
     return result;
-  }, [rows, search, filterGender, filterStatus, filterDate, filterTier, filterPayment, filterTax, sortBy]);
+  }, [rows, search, filterStatus, filterDate, filterTier, filterPayment, filterTax, sortBy]);
 
   const exportExcel = () => {
     if (typeof window.XLSX === 'undefined') {
@@ -5182,11 +5180,6 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <select value={filterGender} onChange={e => setFilterGender(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
-            <option value="all">ทุกเพศ</option>
-            <option value="M">ชาย</option>
-            <option value="F">หญิง</option>
-          </select>
           <select value={filterDate} onChange={e => setFilterDate(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
             <option value="all">ทุกวันแข่ง</option>
             {RACE_DATES.map(d => (

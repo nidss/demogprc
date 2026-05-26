@@ -15,7 +15,7 @@ const HERO_VIDEO = './assets/GRANDPRIX%20RUNBIKE%20CHAMPIONSHIP%20_Monomax.mp4';
 const EVENTS = [
   {
     id: 'evt1',
-    title: 'RUN BIKE',
+    title: 'Grandprix Runbike Championship 2026 Event 2',
     subtitle: 'ซีรีส์เปิดสนาม',
     dateRange: '26 มีนาคม 2569 - 26 มี.ค.',
     venue: 'สนามแข่งหลัก กรุงเทพฯ',
@@ -1637,6 +1637,19 @@ function DocumentUpload({ files, onChange }) {
         onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
       />
 
+      {/* Privacy disclaimer */}
+      <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2.5">
+        <p className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5 mb-1">
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z" />
+          </svg>
+          คำแนะนำก่อนอัพโหลดสำเนาบัตรประชาชน
+        </p>
+        <p className="text-[10.5px] text-amber-800 leading-relaxed">
+          กรุณาปิดบังข้อมูลลักษณะพิเศษ ได้แก่ <span className="font-semibold">ศาสนา กรุ๊ปเลือด และเชื้อชาติ</span> ก่อนอัพโหลด เพื่อปกป้องความเป็นส่วนตัวของท่าน บริษัทไม่จัดเก็บหรือใช้ข้อมูลดังกล่าว และขอสงวนสิทธิ์ปิดบังข้อมูลนั้นแทนท่านหากยังไม่ได้ดำเนินการ
+        </p>
+      </div>
+
       {/* File list */}
       {files.length > 0 && (
         <div className="space-y-1.5">
@@ -2848,8 +2861,8 @@ function LandingPage({ onRegisterClick, user }) {
   const events = [
     {
       id: 'evt1',
-      tag: 'RUN BIKE',
-      title: 'RUN BIKE',
+      tag: 'EVENT 2',
+      title: 'Grandprix Runbike Championship 2026 Event 2',
       dateRange: '26 มีนาคม 2569 - 26 มี.ค.',
       status: 'รอการประกาศ',
       registered: 9,
@@ -4533,7 +4546,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               key={evt.id}
               active={selectedEventId === evt.id}
               onClick={() => setSelectedEventId(evt.id)}
-              label={evt.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
+              label={evt.id === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026'}
               sublabel={`${evt.regsCount} รายการ`}
               count={evt.racersCount}
               isFeatured={evt.id === 'evt2'}
@@ -4718,7 +4731,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
         <RegistrationsTable
           registrations={filteredRegs}
           checkIns={checkIns}
-          eventLabel={selectedEventId === 'all' ? null : (currentEvent ? (currentEvent.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026') : null)}
+          eventLabel={selectedEventId === 'all' ? null : (currentEvent ? (currentEvent.id === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026') : null)}
         />
       </div>
     </div>
@@ -4881,7 +4894,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'คูปอง': r.couponCode || '-',
       'ใบกำกับภาษี': r.hasTaxInvoice ? 'ขอ' : '-',
       'สถานะเช็คอิน': r.isCheckedIn ? `เช็คอินแล้ว ${r.checkInTime || ''}` : 'รอเช็คอิน',
-      'Event': r.eventId === 'evt1' ? 'RUN BIKE' : 'GPRC 2026',
+      'Event': r.eventId === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026',
       'ประเทศ': r.country || '-',
       'ทีม': r.teamName || '-',
     }));
@@ -5865,7 +5878,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  {evt.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026'}
+                  {evt.id === 'evt1' ? 'GPRC 2026 E2' : 'GPRC 2026'}
                   <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md text-[10px] font-black ${
                     isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-900'
                   }`}>{racersForEvent}</span>
@@ -6161,7 +6174,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                             </p>
                             {ev && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-[9px] font-bold uppercase tracking-wider">
-                                {ev.id === 'evt1' ? 'RUN BIKE' : 'GPRC'}
+                                {ev.id === 'evt1' ? 'GPRC E2' : 'GPRC'}
                               </span>
                             )}
                           </div>

@@ -5797,11 +5797,15 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                 </div>
               </div>
               <div className="p-4 sm:p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">ชื่อนักแข่ง</p>
                     <p className="text-lg font-bold text-slate-900">{foundRacer.racer.thFirstName} {foundRacer.racer.thLastName}</p>
                     <p className="text-xs text-slate-500">{foundRacer.racer.enFirstName} {foundRacer.racer.enLastName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">ไซส์เสื้อ</p>
+                    <p className="text-lg font-bold text-slate-900">{foundRacer.racer.shirtSize || '—'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">เลขอ้างอิง</p>

@@ -168,9 +168,10 @@ const newRacer = () => ({
   thFirstName: '', thLastName: '',
   enFirstName: '', enLastName: '',
   nickname: '',
+  phone: '', // เบอร์โทรนักแข่ง
   birthDate: '',
   gender: '', // 'male' | 'female'
-  shirtSize: '', // XS | S | M | L | XL | XXL | 3XL
+  shirtSize: '', // S | M | L | XL | XXL
   country: 'TH', // ISO code
   teamName: '',
   documents: [],
@@ -181,7 +182,7 @@ const newRacer = () => ({
 });
 
 // Shirt sizes
-const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 // Countries (Thailand + ASEAN + ที่ใกล้)
 const COUNTRIES = [
@@ -1385,6 +1386,16 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                 />
               </div>
               <div>
+                <Label>เบอร์นักแข่ง</Label>
+                <Input
+                  icon={Phone}
+                  type="tel"
+                  placeholder="08X-XXX-XXXX"
+                  value={r.phone || ''}
+                  onChange={e => onUpdate({ phone: e.target.value })}
+                />
+              </div>
+              <div>
                 <Label required>ประเทศ</Label>
                 <CountrySelect
                   value={r.country || 'TH'}
@@ -1419,7 +1430,8 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                     />
                   </div>
                   {r.birthDate && (
-                    <div className="h-10 px-2.5 rounded-md bg-slate-100 border border-slate-200 flex items-center text-[11px] font-medium text-slate-700 whitespace-nowrap">
+                    <div className="h-10 px-3 rounded-md bg-gradient-to-r from-red-50 to-amber-50 border-2 border-red-300 flex items-center gap-1.5 text-sm font-bold text-red-700 whitespace-nowrap shadow-sm">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.5} />
                       {ageYM.years} ปี {ageYM.months} ด.
                     </div>
                   )}
@@ -1427,7 +1439,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
               </div>
               <div>
                 <Label required>ไซส์เสื้อ</Label>
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-5 gap-1.5">
                   {SHIRT_SIZES.map(size => (
                     <button
                       key={size}
@@ -1498,6 +1510,7 @@ function RacerCard({ racer: r, index, canRemove, onRemove, onUpdate }) {
                   dates={RACE_DATES}
                   selected={r.selectedDates}
                   onToggle={toggleDate}
+                  birthDate={r.birthDate}
                 />
               </div>
 
@@ -1652,7 +1665,7 @@ function DocumentUpload({ files, onChange }) {
   );
 }
 
-function DatePicker({ dates, selected, onToggle }) {
+function DatePicker({ dates, selected, onToggle, birthDate }) {
   // จัด group ตามเดือน
   const byMonth = {};
   dates.forEach(d => {
@@ -1665,6 +1678,19 @@ function DatePicker({ dates, selected, onToggle }) {
     'ม.ค.': 'มกราคม', 'ก.พ.': 'กุมภาพันธ์', 'มี.ค.': 'มีนาคม', 'เม.ย.': 'เมษายน',
     'พ.ค.': 'พฤษภาคม', 'มิ.ย.': 'มิถุนายน', 'ก.ค.': 'กรกฎาคม', 'ส.ค.': 'สิงหาคม',
     'ก.ย.': 'กันยายน', 'ต.ค.': 'ตุลาคม', 'พ.ย.': 'พฤศจิกายน', 'ธ.ค.': 'ธันวาคม',
+  };
+
+  // คำนวณอายุ (years.months) ตาม logic age criteria — ใช้ raceDate.ageRefYear + ageRefMonth
+  const ageAtRaceDate = (raceDate) => {
+    if (!birthDate) return null;
+    const b = new Date(birthDate);
+    const by = b.getFullYear();
+    const bm = b.getMonth() + 1; // 1-12
+    const ageYears = raceDate.ageRefYear - by;
+    // dot = ageRefMonth - bm (wrap 0-11) → จำนวนเดือนตั้งแต่ครบปี
+    let ageDot = raceDate.ageRefMonth - bm;
+    while (ageDot < 0) ageDot += 12;
+    return { years: ageYears, months: ageDot };
   };
 
   return (
@@ -1689,8 +1715,8 @@ function DatePicker({ dates, selected, onToggle }) {
             </div>
             {/* Day buttons */}
             <div className="p-2.5 bg-white">
-              <div className="grid grid-cols-4 gap-1.5">
-                {days.map(d => {
+              <div className="grid grid-cols-2 gap-2">
+                {days.map((d, idx) => {
                   const isSel = selected.includes(d.id);
                   const isSat = d.weekday === 'เสาร์';
                   return (
@@ -1698,20 +1724,48 @@ function DatePicker({ dates, selected, onToggle }) {
                       key={d.id}
                       type="button"
                       onClick={() => onToggle(d.id)}
-                      className={`px-2 py-2 rounded-md border text-center transition ${
+                      className={`px-3 py-2.5 rounded-md border text-left transition ${
                         isSel
                           ? 'bg-slate-900 border-slate-900 text-white'
                           : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
                       }`}
                     >
-                      <div className={`text-[10px] uppercase tracking-wide ${isSel ? 'text-slate-300' : isSat ? 'text-slate-600' : 'text-slate-400'}`}>
-                        {isSat ? 'SAT' : 'SUN'}
+                      <div className={`text-[10px] uppercase tracking-wider font-bold ${isSel ? 'text-slate-300' : 'text-slate-400'}`}>
+                        สนามที่ {idx + 1}
                       </div>
-                      <div className="text-base font-semibold leading-tight">{d.day}</div>
+                      <div className="text-base font-semibold leading-tight mt-0.5">
+                        {isSat ? 'เสาร์' : 'อาทิตย์'} {d.day}
+                      </div>
                     </button>
                   );
                 })}
               </div>
+
+              {/* แสดงอายุที่คำนวณตามวันแข่ง */}
+              {birthDate && (
+                <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" strokeWidth={2.5} />
+                    อายุนักแข่ง ณ วันแข่งแต่ละสนาม
+                  </p>
+                  {days.map((d, idx) => {
+                    const age = ageAtRaceDate(d);
+                    if (!age) return null;
+                    return (
+                      <div key={d.id} className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-600">
+                          <span className="font-bold text-slate-900">สนามที่ {idx + 1}</span>
+                          <span className="text-slate-400 mx-1">·</span>
+                          {d.weekday === 'เสาร์' ? 'เสาร์' : 'อาทิตย์'} {d.day} {month}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 font-bold">
+                          อายุ {age.years} ปี {age.months} เดือน
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -3694,6 +3748,10 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
             <Input placeholder="เช่น น้องเอ" value={r.nickname || ''} onChange={e => update({ nickname: e.target.value })} />
           </div>
           <div>
+            <Label>เบอร์นักแข่ง</Label>
+            <Input icon={Phone} type="tel" placeholder="08X-XXX-XXXX" value={r.phone || ''} onChange={e => update({ phone: e.target.value })} />
+          </div>
+          <div>
             <Label required>ประเทศ</Label>
             <CountrySelect value={r.country || 'TH'} onChange={code => update({ country: code })} />
           </div>
@@ -3717,7 +3775,8 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
                 />
               </div>
               {r.birthDate && (
-                <div className="h-10 px-2.5 rounded-md bg-slate-100 border border-slate-200 flex items-center text-[11px] font-medium text-slate-700 whitespace-nowrap">
+                <div className="h-10 px-3 rounded-md bg-gradient-to-r from-red-50 to-amber-50 border-2 border-red-300 flex items-center gap-1.5 text-sm font-bold text-red-700 whitespace-nowrap shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.5} />
                   {ageYM.years} ปี {ageYM.months} ด.
                 </div>
               )}
@@ -3725,7 +3784,7 @@ function RacerEditorModal({ open, onClose, racer, onSave }) {
           </div>
           <div className="sm:col-span-2">
             <Label required>ไซส์เสื้อ</Label>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-5 gap-1.5">
               {SHIRT_SIZES.map(size => (
                 <button
                   key={size}

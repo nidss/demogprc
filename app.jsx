@@ -5006,11 +5006,18 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                             {r.additionalTiersList[0]}
                           </span>
                           {r.additionalTiersList.length > 1 && (
-                            <span
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold cursor-help"
-                              title={r.additionalTiersList.slice(1).join(', ')}
-                            >
-                              +{r.additionalTiersList.length - 1}
+                            <span className="relative inline-flex group">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                                +{r.additionalTiersList.length - 1}
+                              </span>
+                              {/* Custom tooltip */}
+                              <span
+                                role="tooltip"
+                                className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
+                              >
+                                {r.additionalTiersList.slice(1).join(', ')}
+                                <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-800" />
+                              </span>
                             </span>
                           )}
                         </span>

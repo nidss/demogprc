@@ -4655,56 +4655,6 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
           eventLabel={selectedEventId === 'all' ? null : (currentEvent ? (currentEvent.id === 'evt1' ? 'RUN BIKE' : 'GPRC 2026') : null)}
         />
       </div>
-
-      {/* Sidebar bottom */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900">แยกตาม Event</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            {eventStats.map(evt => {
-              const pct = Math.round((evt.racersCount / evt.capacity) * 100);
-              const checkInPct = evt.racersCount > 0 ? Math.round((evt.checkInsCount / evt.racersCount) * 100) : 0;
-              const isActive = selectedEventId === evt.id;
-              return (
-                <button
-                  key={evt.id}
-                  onClick={() => setSelectedEventId(isActive ? 'all' : evt.id)}
-                  className={`w-full text-left rounded-lg p-2 -m-2 transition ${isActive ? 'bg-red-50' : 'hover:bg-slate-50'}`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className={`text-xs font-bold truncate flex-1 ${isActive ? 'text-red-700' : 'text-slate-900'}`}>{evt.title}</p>
-                    <span className="text-xs font-mono font-bold text-slate-900 ml-2">{evt.racersCount}/{evt.capacity}</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {evt.regsCount} การลงทะเบียน · เช็คอิน {evt.checkInsCount}/{evt.racersCount} ({checkInPct}%)
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <button
-          onClick={() => onNavigate('admin-checkin')}
-          className="w-full rounded-2xl p-5 bg-gradient-to-br from-slate-900 to-red-950 text-white text-left hover:shadow-xl transition-all group overflow-hidden relative"
-        >
-          <div className="absolute -top-4 -right-4 w-24 h-24 bg-red-500/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="relative">
-            <Flag className="w-6 h-6 text-red-300 mb-2" strokeWidth={2} />
-            <p className="text-xs font-bold text-red-300 uppercase tracking-widest mb-1">เริ่มงาน</p>
-            <p className="text-lg font-black tracking-tight mb-1">Check-in หน้างาน</p>
-            <p className="text-xs text-white/60">สแกน QR Code เพื่อบันทึกการเข้าร่วม</p>
-            <p className="inline-flex items-center gap-1 text-xs font-bold text-white mt-3 group-hover:gap-2 transition-all">
-              ไปยังหน้า Check-in <ArrowRight className="w-3.5 h-3.5" />
-            </p>
-          </div>
-        </button>
-      </div>
     </div>
   );
 }
@@ -4806,6 +4756,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             raceDayId: did,
             mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
             additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
+            additionalTiersList: additionalTiers, // array สำหรับ render +N badge + tooltip
             isCheckedIn, checkInTime: checkInRecord?.time,
             shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
             guardianPhone: reg.guardian?.phone || '-',
@@ -5048,10 +4999,20 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                         {r.mainTiers}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5">
-                      {r.additionalTiers !== '-' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold">
-                          {r.additionalTiers}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {r.additionalTiersList && r.additionalTiersList.length > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold">
+                            {r.additionalTiersList[0]}
+                          </span>
+                          {r.additionalTiersList.length > 1 && (
+                            <span
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold cursor-help"
+                              title={r.additionalTiersList.slice(1).join(', ')}
+                            >
+                              +{r.additionalTiersList.length - 1}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>

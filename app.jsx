@@ -4650,71 +4650,27 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
 
       {/* KPIs — 6 cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
-        <KpiCard
-          label="การลงทะเบียน"
-          value={totalRegs}
-          unit="รายการ"
-          icon={Tag}
-          color="from-blue-500 to-blue-700"
-          detail={
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <span className="font-semibold text-slate-700">Complete:</span>
-                <span className="font-bold text-green-700">{regsCompleted}</span>
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <span className="font-semibold text-slate-700">Pending:</span>
-                <span className="font-bold text-amber-700">{regsPending}</span>
-              </span>
-            </div>
-          }
-        />
-        <KpiCard
-          label="จำนวนนักแข่ง"
-          value={totalRacers}
-          unit="คน"
-          icon={User}
-          color="from-red-500 to-red-700"
-          detail={
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <span className="font-semibold text-slate-700">Complete:</span>
-                <span className="font-bold text-green-700">{racersCompleted}</span>
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <span className="font-semibold text-slate-700">Pending:</span>
-                <span className="font-bold text-amber-700">{racersPending}</span>
-              </span>
-            </div>
-          }
-        />
+        <KpiCard label="การลงทะเบียน" value={totalRegs} unit="รายการ" icon={Tag} color="from-blue-500 to-blue-700" />
+        <KpiCard label="จำนวนนักแข่ง" value={totalRacers} unit="คน" icon={User} color="from-red-500 to-red-700" />
         <KpiCard label="ชำระแล้ว" value={fmt(totalPaid)} unit="บาท" icon={CreditCard} trend="+15%" color="from-green-500 to-green-700" />
         <KpiCard label="รอชำระ/ชำระไม่สำเร็จ" value={fmt(totalPending)} unit="บาท" icon={CreditCard} trend="+15%" color="from-yellow-500 to-yellow-600" />
         <KpiCard label="ยอดรวมทั้งหมด" value={fmt(totalPaid)} subValue={fmt(totalExpected)} unit="บาท" icon={CreditCard} trend="+15%" color="from-orange-500 to-orange-700" />
         <KpiCard
           label="เช็คอินแล้ว"
-          value={checkInCount}
-          subValue={totalRacers}
-          unit={`${checkInRate}%`}
           icon={Check}
           color="from-amber-500 to-amber-700"
-          detail={
-            <div className="flex items-center justify-between gap-2">
+          customBody={
+            <div className="space-y-1.5">
               {RACE_DATES.map(d => {
                 const total = racersPerDay[d.id] || 0;
                 const checked = checkInsPerDay[d.id] || 0;
                 return (
-                  <span key={d.id} className="inline-flex items-center gap-1">
-                    <span className="font-semibold text-slate-700">{d.weekday}</span>
-                    <span>
-                      <span className="font-bold text-green-700">{checked}</span>
-                      <span className="text-slate-400">/{total}</span>
+                  <div key={d.id} className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-600">{d.weekday}</span>
+                    <span className="text-lg font-semibold text-slate-900 tracking-tight">
+                      {checked}<span className="text-sm font-medium text-slate-400">/{total}</span>
                     </span>
-                  </span>
+                  </div>
                 );
               })}
             </div>
@@ -5489,7 +5445,7 @@ function RegistrationDetailModal({ open, onClose, registration, checkIns }) {
   );
 }
 
-function KpiCard({ label, value, unit, subValue, icon: Icon, trend, color, trendIsRate, detail }) {
+function KpiCard({ label, value, unit, subValue, icon: Icon, trend, color, trendIsRate, detail, customBody }) {
   return (
     <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5">
       <div className="flex items-start justify-between mb-3">
@@ -5505,11 +5461,17 @@ function KpiCard({ label, value, unit, subValue, icon: Icon, trend, color, trend
         )}
       </div>
       <p className="text-[11px] font-medium text-slate-500 mb-1">{label}</p>
-      <p className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight leading-none">
-        {value}
-        {subValue && <span className="text-base font-medium text-slate-400 ml-1">/{subValue}</span>}
-      </p>
-      <p className="text-[10px] text-slate-500 mt-1">{unit}</p>
+      {customBody ? (
+        customBody
+      ) : (
+        <>
+          <p className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight leading-none">
+            {value}
+            {subValue && <span className="text-base font-medium text-slate-400 ml-1">/{subValue}</span>}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-1">{unit}</p>
+        </>
+      )}
       {detail && (
         <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-600 leading-relaxed">
           {detail}

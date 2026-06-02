@@ -6730,13 +6730,15 @@ function App() {
       const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
       const pickIdx = (arr, i) => arr[i % arr.length];
 
-      // generate 120 registrations
+      // generate registrations: evt1 (Event 2) = 120, evt2 (CHAMPIONSHIP) = 56
       const mock = [];
       const allRacerIds = [];
-      for (let i = 0; i < 120; i++) {
+      const TOTAL_REGS = 176;
+      for (let i = 0; i < TOTAL_REGS; i++) {
         const isMale = rnd() > 0.45;
         const numRacers = rnd() < 0.3 ? 2 : 1; // 30% มี 2 นักแข่ง
-        const eventId = rnd() > 0.4 ? 'evt2' : 'evt1';
+        // i 0-119 → evt1 (120 รายการ), i 120-175 → evt2 (56 รายการ)
+        const eventId = i < 120 ? 'evt1' : 'evt2';
 
         const regRacers = [];
         let regTotal = 0;
@@ -6902,10 +6904,10 @@ function App() {
         });
       }
 
-      // ── จัด pattern รุ่นเพิ่มให้ record 1-4 ของ default event (evt2) เพื่อ demo ──
+      // ── จัด pattern รุ่นเพิ่มให้ record 1-4 ของ evt1 (Event 2, default event) เพื่อ demo ──
       // 1: เพิ่ม 1 (จ่าย) | 2: เพิ่ม 2 (จ่าย จ่าย) | 3: เพิ่ม 2 (จ่าย รอ) | 4: เพิ่ม 3 (จ่าย จ่าย รอ)
-      const defaultEventId = 'evt2';
-      // เรียงแบบเดียวกับตาราง (date-desc) แล้วหยิบ evt2
+      const defaultEventId = 'evt1';
+      // เรียงแบบเดียวกับตาราง (date-desc) แล้วหยิบ evt1
       const evt2Sorted = [...mock]
         .filter(r => r.eventId === defaultEventId)
         .sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));

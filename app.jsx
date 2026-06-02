@@ -4990,6 +4990,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [filterTier, setFilterTier] = useState('all'); // tierId
   const [filterPayment, setFilterPayment] = useState('all'); // 'all' | 'paid' | 'pending'
   const [filterTax, setFilterTax] = useState('all'); // 'all' | 'yes' | 'no'
+  const [filterCoupon, setFilterCoupon] = useState('all'); // 'all' | 'yes' | 'no'
+  const [proofModal, setProofModal] = useState({ open: false, documents: [], name: '' });
   const [sortBy, setSortBy] = useState('date-desc');
 
   // flatten registrations → 1 row per racer × day
@@ -5055,6 +5057,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             allTierIds: tiersForDay, // tier ids ของวันนี้ — สำหรับ filter
             isCheckedIn, checkInTime: checkInRecord?.time,
             shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
+            documents: racer.documents || [],
             guardianPhone: reg.guardian?.phone || '-',
             guardianName: reg.guardian?.name || '',
             couponCode: reg.couponCode || null,
@@ -5086,11 +5089,15 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       if (filterTax === 'yes') result = result.filter(r => r.hasTaxInvoice);
       else if (filterTax === 'no') result = result.filter(r => !r.hasTaxInvoice);
     }
+    if (filterCoupon !== 'all') {
+      if (filterCoupon === 'yes') result = result.filter(r => !!r.couponCode);
+      else if (filterCoupon === 'no') result = result.filter(r => !r.couponCode);
+    }
     if (sortBy === 'date-desc') result.sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));
     else if (sortBy === 'date-asc') result.sort((a, b) => new Date(a.dateRaw) - new Date(b.dateRaw));
     else if (sortBy === 'name') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
     return result;
-  }, [rows, search, filterStatus, filterDate, filterTier, filterPayment, filterTax, sortBy]);
+  }, [rows, search, filterStatus, filterDate, filterTier, filterPayment, filterTax, filterCoupon, sortBy]);
 
   const exportExcel = () => {
     if (typeof window.XLSX === 'undefined') {
@@ -5104,7 +5111,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
       'ชื่อ-นามสกุล': r.fullName,
       'ชื่อเล่น': r.nickname,
       'เพศ': r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-',
-      'อายุ': r.age !== null ? r.age + ' ปี' : '-',
+      'วันเดือนปีเกิด': r.birthDate || '-',
       'ไซส์เสื้อ': r.shirtSize || '-',
       'วันที่ลงแข่ง': r.raceDayLabel,
       'รุ่นที่แข่ง (หลัก)': r.mainTiers,
@@ -5196,6 +5203,11 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             <option value="yes">ขอใบกำกับภาษี</option>
             <option value="no">ไม่ขอใบกำกับภาษี</option>
           </select>
+          <select value={filterCoupon} onChange={e => setFilterCoupon(e.target.value)} className="h-10 px-2 text-sm rounded-md border border-slate-200 bg-white">
+            <option value="all">ทุกคูปอง</option>
+            <option value="yes">ใช้คูปอง</option>
+            <option value="no">ไม่ใช้คูปอง</option>
+          </select>
         </div>
 
         <div className="mt-2 flex items-center gap-2">
@@ -5220,15 +5232,16 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
         {filteredRows.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
         ) : (
-          <table className="text-sm" style={{ minWidth: '2200px', width: '100%' }}>
+          <table className="text-sm" style={{ minWidth: '2320px', width: '100%' }}>
             <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
               <tr>
-                <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ทำรายการ</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ลงทะเบียน</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">เลขอ้างอิง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">ชื่อเล่น</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">เพศ</th>
-                <th className="px-3 py-2.5 text-center whitespace-nowrap">อายุ</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">วันเดือนปีเกิด</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">หลักฐาน</th>
                 <th className="px-3 py-2.5 text-center whitespace-nowrap">ไซส์เสื้อ</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ลงแข่ง</th>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">รุ่นหลัก</th>
@@ -5250,16 +5263,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                   }`}>
                     <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-slate-600">{r.date}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-xs text-slate-900">{r.refId}</span>
-                        {ev && (
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                            ev.id === 'evt1' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'
-                          }`}>
-                            {ev.id === 'evt1' ? 'RUN' : 'GPRC'}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-mono font-bold text-xs text-slate-900">{r.refId}</span>
                     </td>
                     <td className="px-3 py-2.5">
                       <p className="text-sm font-bold text-slate-900 truncate max-w-[180px]">{r.fullName}</p>
@@ -5272,7 +5276,27 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                         {r.gender === 'M' ? 'ชาย' : r.gender === 'F' ? 'หญิง' : '-'}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-center text-xs font-bold text-slate-900 whitespace-nowrap">{r.age !== null ? `${r.age} ปี` : '-'}</td>
+                    <td className="px-3 py-2.5 text-center text-xs font-medium text-slate-700 whitespace-nowrap font-mono">
+                      {r.birthDate || '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {r.documents && r.documents.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setProofModal({ open: true, documents: r.documents, name: r.fullName })}
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition"
+                          title="ดูหลักฐาน"
+                        >
+                          <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                            <circle cx="9" cy="9" r="2"/>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                          </svg>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 text-center whitespace-nowrap">
                       {r.shirtSize ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold">
@@ -5361,8 +5385,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                     </td>
                     <td className="px-3 py-2.5 text-center whitespace-nowrap">
                       {r.couponCode ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-mono font-bold">
-                          {r.couponCode}
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700" title={`ใช้คูปอง: ${r.couponCode}`}>
+                          <Check className="w-3.5 h-3.5" strokeWidth={3} />
                         </span>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>
@@ -5415,6 +5439,60 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           </div>
         )}
       </div>
+
+      {/* Proof / หลักฐาน Modal */}
+      {proofModal.open && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setProofModal({ open: false, documents: [], name: '' })}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+              <div>
+                <p className="text-sm font-bold text-slate-900">หลักฐานการยืนยันตัวตน</p>
+                <p className="text-[11px] text-slate-500">{proofModal.name}</p>
+              </div>
+              <button
+                onClick={() => setProofModal({ open: false, documents: [], name: '' })}
+                className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                aria-label="ปิด"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3">
+              {proofModal.documents.map((doc, i) => {
+                const isImg = doc.dataUrl && (doc.type?.startsWith('image') || /\.(png|jpe?g|gif|webp)$/i.test(doc.name || ''));
+                return (
+                  <div key={i} className="rounded-lg border border-slate-200 overflow-hidden">
+                    {isImg ? (
+                      <img src={doc.dataUrl} alt={doc.name} className="w-full object-contain max-h-[55vh] bg-slate-50" />
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 bg-slate-50">
+                        <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                          <FileIcon className="w-5 h-5 text-slate-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{doc.name || 'เอกสาร'}</p>
+                          <p className="text-[11px] text-slate-400">
+                            {doc.type === 'placeholder' ? 'ยืนยันแล้วจากการลงทะเบียนเดิม' : 'ไม่สามารถแสดงตัวอย่างไฟล์นี้ได้'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {proofModal.documents.length === 0 && (
+                <p className="text-center text-sm text-slate-400 py-8">ไม่มีหลักฐาน</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

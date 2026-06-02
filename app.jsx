@@ -5341,13 +5341,21 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {r.mainTiersList && r.mainTiersList.length > 0 ? (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
-                          r.mainTiersList[0].paid
-                            ? 'bg-green-50 border-green-200 text-green-700'
-                            : 'bg-amber-50 border-amber-200 text-amber-700'
-                        }`}>
-                          {r.mainTiersList[0].name}
-                          {!r.mainTiersList[0].paid && <span className="text-[8px] font-normal">· รอจ่าย</span>}
+                        <span className="relative inline-flex group">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                            r.mainTiersList[0].paid
+                              ? 'bg-green-50 border-green-200 text-green-700'
+                              : 'bg-amber-50 border-amber-200 text-amber-700'
+                          }`}>
+                            {r.mainTiersList[0].name.split('(')[0].trim()}
+                          </span>
+                          <span
+                            role="tooltip"
+                            className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
+                          >
+                            {r.mainTiersList[0].name}
+                            <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-800" />
+                          </span>
                         </span>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>
@@ -5355,33 +5363,25 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {r.additionalTiersList && r.additionalTiersList.length > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
-                            r.additionalTiersList[0].paid
-                              ? 'bg-green-50 border-green-200 text-green-700'
-                              : 'bg-amber-50 border-amber-200 text-amber-700'
-                          }`}>
-                            {r.additionalTiersList[0].name}
-                          </span>
-                          {r.additionalTiersList.length > 1 && (
-                            <span className="relative inline-flex group">
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${
-                                r.additionalTiersList.slice(1).every(t => t.paid)
-                                  ? 'bg-green-100 border-green-300 text-green-800'
-                                  : 'bg-amber-100 border-amber-300 text-amber-800'
+                        <span className="inline-flex items-center gap-1 flex-wrap">
+                          {r.additionalTiersList.map((t, ti) => (
+                            <span key={ti} className="relative inline-flex group">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                                t.paid
+                                  ? 'bg-green-50 border-green-200 text-green-700'
+                                  : 'bg-amber-50 border-amber-200 text-amber-700'
                               }`}>
-                                +{r.additionalTiersList.length - 1}
+                                {t.name.split('(')[0].trim()}
                               </span>
-                              {/* Custom tooltip */}
                               <span
                                 role="tooltip"
                                 className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
                               >
-                                {r.additionalTiersList.slice(1).map(t => t.name).join(', ')}
+                                {t.name}
                                 <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-800" />
                               </span>
                             </span>
-                          )}
+                          ))}
                         </span>
                       ) : (
                         <span className="text-[11px] text-slate-300">—</span>
@@ -6708,9 +6708,22 @@ function App() {
           // จำลองเคส "เพิ่มรุ่นทีหลัง": ทุก racer ลำดับที่ 3 (i%3===2) ที่มีรุ่นเพิ่ม
           // → รุ่นหลักจ่ายแล้ว, รุ่นเพิ่มรอจ่าย
           let paidTiers = null;
-          if (i % 8 === 1 || i % 8 === 2) {
+          if (i % 8 === 0) {
+            // เคส C: รุ่นเพิ่ม 3 ตัว → จ่ายหลัก + เพิ่ม 2 ตัวแรก, เพิ่มตัวที่ 3 รอจ่าย
+            // (จำลอง: เคยจ่ายหลัก+เพิ่ม2 แล้วมาเพิ่มอีก 1 รุ่น รอจ่าย)
+            paidTiers = {};
+            Object.keys(selectedRaces).forEach(did => {
+              const tids = selectedRaces[did];
+              if (tids.length >= 4) {
+                paidTiers[did] = [tids[0], tids[1], tids[2]]; // จ่าย 3, รอ 1
+              } else if (tids.length >= 2) {
+                paidTiers[did] = tids.slice(0, tids.length - 1); // จ่ายทั้งหมดยกเว้นตัวสุดท้าย
+              } else {
+                paidTiers[did] = [...tids];
+              }
+            });
+          } else if (i % 8 === 1 || i % 8 === 2) {
             // เคส B: มีรุ่นเพิ่ม 2 ตัว → จ่ายหลัก+เพิ่มตัวแรก, เพิ่มตัวที่ 2 รอจ่าย
-            // (จำลอง: ลงครั้งแรก หลัก+เพิ่ม1 จ่ายแล้ว, ภายหลังเพิ่มอีก 1 รุ่น รอจ่าย)
             paidTiers = {};
             Object.keys(selectedRaces).forEach(did => {
               const tids = selectedRaces[did];

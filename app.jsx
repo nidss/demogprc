@@ -9,6 +9,7 @@ const MASCOT_RIGHT = './assets/mascot-right.jpg';
 const HERO_BANNER = './assets/hero.png';
 const SUCCESS_BANNER = './assets/success.png';
 const GRANDPRIX_LOGO = './assets/grandprix-logo.png';
+const ID_CARD_DEMO = './assets/idcard.png';
 const HERO_VIDEO = './assets/GRANDPRIX%20RUNBIKE%20CHAMPIONSHIP%20_Monomax.mp4';
 
 // Events available for registration
@@ -5280,22 +5281,27 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       {r.birthDate || '-'}
                     </td>
                     <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                      {r.documents && r.documents.length > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setProofModal({ open: true, documents: r.documents, name: r.fullName })}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition"
-                          title="ดูหลักฐาน"
-                        >
-                          <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                            <circle cx="9" cy="9" r="2"/>
-                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                          </svg>
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-slate-300">—</span>
-                      )}
+                      {(() => {
+                        // ใช้ documents จริงถ้ามี dataUrl, ไม่งั้น fallback เป็น demo id card
+                        const realDocs = (r.documents || []).filter(d => d.dataUrl);
+                        const docsToShow = realDocs.length > 0
+                          ? realDocs
+                          : [{ name: 'บัตรประชาชน (ตัวอย่าง)', type: 'image/png', dataUrl: ID_CARD_DEMO }];
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setProofModal({ open: true, documents: docsToShow, name: r.fullName })}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition"
+                            title="ดูหลักฐาน"
+                          >
+                            <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                              <circle cx="9" cy="9" r="2"/>
+                              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                            </svg>
+                          </button>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2.5 text-center whitespace-nowrap">
                       {r.shirtSize ? (

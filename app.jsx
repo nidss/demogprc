@@ -4741,6 +4741,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
   const totalMainCount = tierStats.reduce((s, t) => s + t.mainCount, 0);
   const totalAdditionalCount = tierStats.reduce((s, t) => s + t.additionalCount, 0);
   const totalRevenue2 = tierStats.reduce((s, t) => s + t.revenue, 0);
+  const totalGrand2 = tierStats.reduce((s, t) => s + t.mainTotalAmt + t.addTotalAmt, 0); // ยอดทั้งหมด = ตรง KPI
 
   // Event stats สำหรับ sidebar (เสมอใช้ all data)
   const eventStats = EVENTS.map(evt => {
@@ -4874,6 +4875,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {tierStats.map(({ tier, mainCount, additionalCount, paidCount, pendingCount, revenue, mainPaidAmt, mainTotalAmt, addPaidAmt, addTotalAmt }) => {
+                  const tierGrandTotal = mainTotalAmt + addTotalAmt; // ยอดทั้งหมด (paid+pending) = ตรงกับ KPI
                   return (
                     <tr key={tier.id} className="hover:bg-slate-50 transition">
                       <td className="px-3 py-2.5 border-r border-slate-100">
@@ -4939,7 +4941,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
 
                       {/* ยอดรวม */}
                       <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{fmt(revenue)}</span>
+                        <span className="text-sm font-medium text-slate-900">{fmt(tierGrandTotal)}</span>
                         <span className="text-[10px] text-slate-400 ml-0.5">฿</span>
                       </td>
                     </tr>
@@ -4956,7 +4958,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                   <td className="px-3 py-2.5 text-center font-medium text-green-700">{totalTierPaid}</td>
                   <td className="px-3 py-2.5 text-center font-medium text-amber-700 border-r border-slate-200">{totalTierPending}</td>
                   <td className="px-3 py-2.5 text-right font-medium text-slate-900">
-                    {fmt(totalRevenue2)} <span className="text-[10px] font-normal text-slate-400">฿</span>
+                    {fmt(totalGrand2)} <span className="text-[10px] font-normal text-slate-400">฿</span>
                   </td>
                 </tr>
               </tfoot>

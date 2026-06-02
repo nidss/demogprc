@@ -5362,7 +5362,6 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                               : 'bg-amber-50 border-amber-200 text-amber-700'
                           }`}>
                             {r.additionalTiersList[0].name}
-                            {!r.additionalTiersList[0].paid && <span className="text-[8px] font-normal">· รอจ่าย</span>}
                           </span>
                           {r.additionalTiersList.length > 1 && (
                             <span className="relative inline-flex group">
@@ -5378,7 +5377,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                                 role="tooltip"
                                 className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
                               >
-                                {r.additionalTiersList.slice(1).map(t => `${t.name}${t.paid ? '' : ' (รอจ่าย)'}`).join(', ')}
+                                {r.additionalTiersList.slice(1).map(t => t.name).join(', ')}
                                 <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-800" />
                               </span>
                             </span>
@@ -6709,16 +6708,26 @@ function App() {
           // จำลองเคส "เพิ่มรุ่นทีหลัง": ทุก racer ลำดับที่ 3 (i%3===2) ที่มีรุ่นเพิ่ม
           // → รุ่นหลักจ่ายแล้ว, รุ่นเพิ่มรอจ่าย
           let paidTiers = null;
-          if (i % 3 === 2) {
+          if (i % 8 === 1 || i % 8 === 2) {
+            // เคส B: มีรุ่นเพิ่ม 2 ตัว → จ่ายหลัก+เพิ่มตัวแรก, เพิ่มตัวที่ 2 รอจ่าย
+            // (จำลอง: ลงครั้งแรก หลัก+เพิ่ม1 จ่ายแล้ว, ภายหลังเพิ่มอีก 1 รุ่น รอจ่าย)
             paidTiers = {};
             Object.keys(selectedRaces).forEach(did => {
               const tids = selectedRaces[did];
-              if (tids.length > 1) {
-                // จ่ายเฉพาะรุ่นหลัก (index 0) — รุ่นเพิ่มรอจ่าย
-                paidTiers[did] = [tids[0]];
+              if (tids.length >= 3) {
+                paidTiers[did] = [tids[0], tids[1]]; // จ่ายหลัก + เพิ่ม1, เพิ่ม2 รอจ่าย
+              } else if (tids.length === 2) {
+                paidTiers[did] = [tids[0]]; // จ่ายหลัก, เพิ่ม1 รอจ่าย
               } else {
                 paidTiers[did] = [...tids]; // จ่ายครบ
               }
+            });
+          } else if (i % 3 === 2) {
+            // เคส A: จ่ายเฉพาะรุ่นหลัก — รุ่นเพิ่มทั้งหมดรอจ่าย
+            paidTiers = {};
+            Object.keys(selectedRaces).forEach(did => {
+              const tids = selectedRaces[did];
+              paidTiers[did] = tids.length > 1 ? [tids[0]] : [...tids];
             });
           }
 

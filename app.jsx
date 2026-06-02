@@ -5021,9 +5021,9 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             const t = RACE_TIERS.find(x => x.id === tid);
             if (!t) return;
             if (idx === 0) {
-              if (!mainTiers.includes(t.label)) mainTiers.push(t.label);
+              if (!mainTiers.includes(t.name || t.label)) mainTiers.push(t.name || t.label);
             } else {
-              if (!additionalTiers.includes(t.label)) additionalTiers.push(t.label);
+              if (!additionalTiers.includes(t.name || t.label)) additionalTiers.push(t.name || t.label);
             }
           });
 
@@ -5220,7 +5220,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
         {filteredRows.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
         ) : (
-          <table className="text-sm" style={{ minWidth: '1620px', width: '100%' }}>
+          <table className="text-sm" style={{ minWidth: '2200px', width: '100%' }}>
             <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
               <tr>
                 <th className="px-3 py-2.5 text-left whitespace-nowrap">วันที่ทำรายการ</th>
@@ -5300,19 +5300,31 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       )}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                        r.paymentStatus === 'paid'
+                          ? 'bg-green-50 border-green-200 text-green-700'
+                          : 'bg-amber-50 border-amber-200 text-amber-700'
+                      }`}>
                         {r.mainTiers}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {r.additionalTiersList && r.additionalTiersList.length > 0 ? (
                         <span className="inline-flex items-center gap-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                            r.paymentStatus === 'paid'
+                              ? 'bg-green-50 border-green-200 text-green-700'
+                              : 'bg-amber-50 border-amber-200 text-amber-700'
+                          }`}>
                             {r.additionalTiersList[0]}
                           </span>
                           {r.additionalTiersList.length > 1 && (
                             <span className="relative inline-flex group">
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${
+                                r.paymentStatus === 'paid'
+                                  ? 'bg-green-100 border-green-300 text-green-800'
+                                  : 'bg-amber-100 border-amber-300 text-amber-800'
+                              }`}>
                                 +{r.additionalTiersList.length - 1}
                               </span>
                               {/* Custom tooltip */}

@@ -4857,23 +4857,12 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {tierStats.map(({ tier, mainCount, additionalCount, paidCount, pendingCount, revenue }) => {
-                  const groupColor = tier.group === 'standard' ? 'red' : tier.group === 'girl' ? 'pink' : 'amber';
-                  const groupClass = {
-                    red: { bg: 'bg-red-100', text: 'text-red-700' },
-                    pink: { bg: 'bg-pink-100', text: 'text-pink-700' },
-                    amber: { bg: 'bg-amber-100', text: 'text-amber-700' },
-                  }[groupColor];
                   return (
                     <tr key={tier.id} className="hover:bg-slate-50 transition">
                       <td className="px-3 py-2.5 border-r border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md ${groupClass.bg} ${groupClass.text} text-xs font-semibold flex-shrink-0`}>
-                            {tier.label}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-[11px] text-slate-700 font-medium leading-tight truncate">{tier.name || tier.label}</p>
-                            {tier.range && <p className="text-[10px] text-slate-400 leading-tight">{tier.range}</p>}
-                          </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-slate-700 font-medium leading-tight truncate">{tier.name || tier.label}</p>
+                          {tier.range && <p className="text-[10px] text-slate-400 leading-tight">{tier.range}</p>}
                         </div>
                       </td>
 

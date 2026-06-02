@@ -4842,7 +4842,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               <Trophy className="w-4 h-4 text-red-600" strokeWidth={2} />
               สรุปแยกตามรุ่นแข่ง
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">นักแข่งต่อรุ่น · สถานะชำระเงิน · ยอดรวม</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">นักแข่งต่อรุ่น · สถานะชำระเงิน · ยอดรวมหลังหักส่วนลด</p>
           </div>
           <div className="flex items-center gap-3 text-[11px]">
             <span className="inline-flex items-center gap-1.5 font-bold">

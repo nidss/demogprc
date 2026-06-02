@@ -5017,18 +5017,27 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
           const dateObj = did ? RACE_DATES.find(d => d.id === did) : null;
           // รุ่นเฉพาะของวันนี้
           const tiersForDay = did ? (racer.selectedRaces?.[did] || []) : [];
+          // paidTiers ของวันนี้ — รุ่นที่จ่ายแล้ว (ใช้ในกรณีเพิ่มรุ่นทีหลัง)
+          const paidTiersForDay = did ? (racer.paidTiers?.[did] || []) : [];
+          // ถ้า reg ไม่ pending → ทุกรุ่นถือว่าจ่ายแล้ว
+          const regIsPaid = reg.paymentStatus !== 'pending';
           // รุ่นหลัก = index 0, รุ่นเพิ่ม = index 1+ (ทุกรุ่นเป็นหลักได้หมด ไม่ขึ้นกับ group)
-          const mainTiers = [];
-          const additionalTiers = [];
+          const mainTiersObj = [];
+          const additionalTiersObj = [];
           tiersForDay.forEach((tid, idx) => {
             const t = RACE_TIERS.find(x => x.id === tid);
             if (!t) return;
+            // tier นี้จ่ายแล้วหรือยัง: reg paid ทั้งก้อน OR อยู่ใน paidTiers
+            const tierPaid = regIsPaid || paidTiersForDay.includes(tid);
+            const obj = { name: t.name || t.label, paid: tierPaid };
             if (idx === 0) {
-              if (!mainTiers.includes(t.name || t.label)) mainTiers.push(t.name || t.label);
+              if (!mainTiersObj.some(x => x.name === obj.name)) mainTiersObj.push(obj);
             } else {
-              if (!additionalTiers.includes(t.name || t.label)) additionalTiers.push(t.name || t.label);
+              if (!additionalTiersObj.some(x => x.name === obj.name)) additionalTiersObj.push(obj);
             }
           });
+          const mainTiers = mainTiersObj;
+          const additionalTiers = additionalTiersObj;
 
           // เช็คอินเฉพาะวันนี้ของนักแข่งคนนี้
           const checkInRecord = did
@@ -5052,9 +5061,10 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             gender: racer.gender, age, birthDate: racer.birthDate,
             raceDayLabel: dateObj?.short || '—', // 1 วันต่อแถว
             raceDayId: did,
-            mainTiers: mainTiers.length > 0 ? mainTiers.join(', ') : '-',
-            additionalTiers: additionalTiers.length > 0 ? additionalTiers.join(', ') : '-',
-            additionalTiersList: additionalTiers, // array สำหรับ render +N badge + tooltip
+            mainTiers: mainTiers.length > 0 ? mainTiers.map(t => t.name).join(', ') : '-',
+            mainTiersList: mainTiers, // [{name, paid}]
+            additionalTiers: additionalTiers.length > 0 ? additionalTiers.map(t => t.name).join(', ') : '-',
+            additionalTiersList: additionalTiers, // [{name, paid}]
             allTierIds: tiersForDay, // tier ids ของวันนี้ — สำหรับ filter
             isCheckedIn, checkInTime: checkInRecord?.time,
             shirtSize: racer.shirtSize, country: racer.country, teamName: racer.teamName,
@@ -5330,28 +5340,34 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                       )}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${
-                        r.paymentStatus === 'paid'
-                          ? 'bg-green-50 border-green-200 text-green-700'
-                          : 'bg-amber-50 border-amber-200 text-amber-700'
-                      }`}>
-                        {r.mainTiers}
-                      </span>
+                      {r.mainTiersList && r.mainTiersList.length > 0 ? (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                          r.mainTiersList[0].paid
+                            ? 'bg-green-50 border-green-200 text-green-700'
+                            : 'bg-amber-50 border-amber-200 text-amber-700'
+                        }`}>
+                          {r.mainTiersList[0].name}
+                          {!r.mainTiersList[0].paid && <span className="text-[8px] font-normal">· รอจ่าย</span>}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {r.additionalTiersList && r.additionalTiersList.length > 0 ? (
                         <span className="inline-flex items-center gap-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${
-                            r.paymentStatus === 'paid'
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                            r.additionalTiersList[0].paid
                               ? 'bg-green-50 border-green-200 text-green-700'
                               : 'bg-amber-50 border-amber-200 text-amber-700'
                           }`}>
-                            {r.additionalTiersList[0]}
+                            {r.additionalTiersList[0].name}
+                            {!r.additionalTiersList[0].paid && <span className="text-[8px] font-normal">· รอจ่าย</span>}
                           </span>
                           {r.additionalTiersList.length > 1 && (
                             <span className="relative inline-flex group">
                               <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${
-                                r.paymentStatus === 'paid'
+                                r.additionalTiersList.slice(1).every(t => t.paid)
                                   ? 'bg-green-100 border-green-300 text-green-800'
                                   : 'bg-amber-100 border-amber-300 text-amber-800'
                               }`}>
@@ -5362,7 +5378,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
                                 role="tooltip"
                                 className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
                               >
-                                {r.additionalTiersList.slice(1).join(', ')}
+                                {r.additionalTiersList.slice(1).map(t => `${t.name}${t.paid ? '' : ' (รอจ่าย)'}`).join(', ')}
                                 <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-800" />
                               </span>
                             </span>
@@ -6690,6 +6706,22 @@ function App() {
           const racerId = `R${String(allRacerIds.length + 1).padStart(3, '0')}`;
           allRacerIds.push(racerId);
 
+          // จำลองเคส "เพิ่มรุ่นทีหลัง": ทุก racer ลำดับที่ 3 (i%3===2) ที่มีรุ่นเพิ่ม
+          // → รุ่นหลักจ่ายแล้ว, รุ่นเพิ่มรอจ่าย
+          let paidTiers = null;
+          if (i % 3 === 2) {
+            paidTiers = {};
+            Object.keys(selectedRaces).forEach(did => {
+              const tids = selectedRaces[did];
+              if (tids.length > 1) {
+                // จ่ายเฉพาะรุ่นหลัก (index 0) — รุ่นเพิ่มรอจ่าย
+                paidTiers[did] = [tids[0]];
+              } else {
+                paidTiers[did] = [...tids]; // จ่ายครบ
+              }
+            });
+          }
+
           regRacers.push({
             id: racerId,
             thFirstName: racerIsMale ? pickIdx(firstNamesM, i + j) : pickIdx(firstNamesF, i + j),
@@ -6704,6 +6736,7 @@ function App() {
             teamName: pick(teams),
             selectedDates,
             selectedRaces,
+            ...(paidTiers ? { paidTiers } : {}),
           });
           regTotal += racerPrice;
           regTotalItems += itemsCount;
@@ -6722,7 +6755,9 @@ function App() {
         const guardianName = `${pick(['คุณ', 'คุณ', 'คุณ'])}${pickIdx(['สมชาย', 'วิชัย', 'ประวิทย์', 'อนุชา', 'พิพัฒน์', 'มณี', 'สุภาพร', 'พรทิพย์', 'จิราพร', 'นันทนา'], i)} ${regRacers[0].thLastName}`;
 
         // สุ่มสถานะชำระเงิน — 75% paid, 25% pending
-        const paymentStatus = Math.random() < 0.75 ? 'paid' : 'pending';
+        let paymentStatus = Math.random() < 0.75 ? 'paid' : 'pending';
+        // ถ้ามี racer ที่มี paidTiers (จำลองเพิ่มรุ่นทีหลัง) → reg ต้อง pending เพื่อให้เห็น tier-level
+        if (regRacers.some(rc => rc.paidTiers)) paymentStatus = 'pending';
         // สุ่มคูปอง — 20% มีคูปอง
         const couponCodes = ['GPRC10', 'GPRCMAIN', 'GPRC10', null, null];
         const couponCode = Math.random() < 0.2 ? pick(couponCodes.filter(Boolean)) : null;
@@ -6913,6 +6948,41 @@ function App() {
   };
 
   const handleRegistrationComplete = ({ racers, data }) => {
+    // ตรวจว่าเป็นโหมด "เพิ่มรุ่น" หรือไม่ (racer มี sourceRegId)
+    const addTierRacer = racers.find(r => r.locked && r.sourceRegId);
+    if (addTierRacer) {
+      // merge tier ใหม่เข้า registration เดิม + เก็บ paidTiers (รุ่นเก่า = จ่ายแล้ว)
+      setRegistrations(prev => prev.map(reg => {
+        if (reg.id !== addTierRacer.sourceRegId) return reg;
+        return {
+          ...reg,
+          racers: reg.racers.map(rc => {
+            if (rc.id !== addTierRacer.sourceRacerId) return rc;
+            // รวมวัน + รุ่น (เก่า + ใหม่)
+            const mergedDates = Array.from(new Set([...(rc.selectedDates || []), ...addTierRacer.selectedDates]));
+            const mergedRaces = { ...rc.selectedRaces };
+            addTierRacer.selectedDates.forEach(did => {
+              const existing = mergedRaces[did] || [];
+              const incoming = addTierRacer.selectedRaces[did] || [];
+              mergedRaces[did] = Array.from(new Set([...existing, ...incoming]));
+            });
+            // paidTiers = รุ่นเก่าที่จ่ายแล้ว (originalRaces) — รวมกับ paidTiers เดิมถ้ามี
+            const paidTiers = { ...(rc.paidTiers || {}) };
+            // ถ้ายังไม่เคยมี paidTiers → รุ่นเดิมทั้งหมดถือว่าจ่ายแล้ว
+            Object.keys(addTierRacer.originalRaces || {}).forEach(did => {
+              paidTiers[did] = Array.from(new Set([...(paidTiers[did] || []), ...(addTierRacer.originalRaces[did] || [])]));
+            });
+            return { ...rc, selectedDates: mergedDates, selectedRaces: mergedRaces, paidTiers };
+          }),
+          // reg มีรุ่นใหม่ที่รอจ่าย → สถานะ pending
+          paymentStatus: 'pending',
+          total: (reg.total || 0) + (data.finalTotal || 0),
+        };
+      }));
+      setView('history');
+      return;
+    }
+
     const newReg = {
       id: Date.now(),
       refId: 'REG-' + Date.now().toString().slice(-8),
@@ -7066,7 +7136,7 @@ function App() {
                           // หา event ที่นักแข่งคนนี้ลงไว้
                           const ev = EVENTS.find(e => e.id === reg.eventId) || EVENTS[0];
                           setSelectedEvent(ev);
-                          setLockedRacer(racer);
+                          setLockedRacer({ ...racer, sourceRegId: reg.id, sourceRacerId: racer.id });
                           setView('register');
                         }}
                         embedded

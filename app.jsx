@@ -4994,6 +4994,8 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [filterCoupon, setFilterCoupon] = useState('all'); // 'all' | 'yes' | 'no'
   const [proofModal, setProofModal] = useState({ open: false, documents: [], name: '' });
   const [sortBy, setSortBy] = useState('date-desc');
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(1);
 
   // flatten registrations → 1 row per racer × day
   const rows = useMemo(() => {
@@ -5109,6 +5111,16 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
     else if (sortBy === 'name') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
     return result;
   }, [rows, search, filterStatus, filterDate, filterTier, filterPayment, filterTax, filterCoupon, sortBy]);
+
+  // Reset ไปหน้าแรกเมื่อ filter/sort/pageSize เปลี่ยน
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterDate, filterTier, filterPayment, filterTax, filterCoupon, sortBy, pageSize]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const startIdx = filteredRows.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const endIdx = Math.min(safePage * pageSize, filteredRows.length);
 
   const exportExcel = () => {
     if (typeof window.XLSX === 'undefined') {
@@ -5266,7 +5278,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRows.slice(0, 100).map(r => {
+              {paginatedRows.map(r => {
                 const ev = EVENTS.find(e => e.id === r.eventId);
                 return (
                   <tr key={r.rowKey} className={`hover:bg-slate-50 transition ${
@@ -5454,9 +5466,84 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
             </tbody>
           </table>
         )}
-        {filteredRows.length > 100 && (
-          <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500 text-center">
-            แสดง 100 รายการแรกจาก {filteredRows.length} รายการ · กด Export Excel เพื่อดูทั้งหมด
+        {filteredRows.length > 0 && (
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* ซ้าย: เลือกจำนวนแถว + สรุป */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-500">แสดง</span>
+                <select
+                  value={pageSize}
+                  onChange={e => setPageSize(Number(e.target.value))}
+                  className="h-8 px-2 text-xs rounded-md border border-slate-200 bg-white font-medium"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-[11px] text-slate-500">แถว</span>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                {startIdx}–{endIdx} จาก {filteredRows.length} รายการ
+              </span>
+            </div>
+
+            {/* ขวา: ปุ่มเปลี่ยนหน้า */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(1)}
+                  disabled={safePage === 1}
+                  className="h-8 px-2 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                >
+                  «
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="h-8 px-2 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> ก่อนหน้า
+                </button>
+                {/* เลขหน้า */}
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                    .map((p, idx, arr) => (
+                      <span key={p} className="flex items-center">
+                        {idx > 0 && arr[idx - 1] !== p - 1 && (
+                          <span className="px-1 text-[11px] text-slate-300">…</span>
+                        )}
+                        <button
+                          onClick={() => setPage(p)}
+                          className={`min-w-[32px] h-8 px-2 rounded-md text-xs font-bold transition ${
+                            p === safePage
+                              ? 'bg-red-600 text-white'
+                              : 'text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </span>
+                    ))}
+                </div>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="h-8 px-2 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition inline-flex items-center gap-1"
+                >
+                  ถัดไป <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setPage(totalPages)}
+                  disabled={safePage === totalPages}
+                  className="h-8 px-2 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent transition"
+                >
+                  »
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -6631,33 +6718,41 @@ function App() {
       const sizes = ['XS', 'S', 'M', 'L', 'XL'];
       const countries = ['TH', 'TH', 'TH', 'TH', 'TH', 'TH', 'TH', 'LA', 'SG', 'MY']; // weight TH
 
-      // ฟังก์ชันสุ่ม
-      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      // ฟังก์ชันสุ่มแบบ deterministic (seeded) — ค่าคงที่ทุกครั้งที่ refresh
+      let _seed = 20260100;
+      const rnd = () => {
+        // mulberry32 PRNG
+        _seed |= 0; _seed = (_seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(_seed ^ (_seed >>> 15), 1 | _seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
       const pickIdx = (arr, i) => arr[i % arr.length];
 
       // generate 20 registrations
       const mock = [];
       const allRacerIds = [];
       for (let i = 0; i < 20; i++) {
-        const isMale = Math.random() > 0.45;
-        const numRacers = Math.random() < 0.3 ? 2 : 1; // 30% มี 2 นักแข่ง
-        const eventId = Math.random() > 0.4 ? 'evt2' : 'evt1';
+        const isMale = rnd() > 0.45;
+        const numRacers = rnd() < 0.3 ? 2 : 1; // 30% มี 2 นักแข่ง
+        const eventId = rnd() > 0.4 ? 'evt2' : 'evt1';
 
         const regRacers = [];
         let regTotal = 0;
         let regTotalItems = 0;
 
         for (let j = 0; j < numRacers; j++) {
-          const racerIsMale = j === 0 ? isMale : Math.random() > 0.5;
+          const racerIsMale = j === 0 ? isMale : rnd() > 0.5;
           const racerGender = racerIsMale ? 'M' : 'F';
           // สุ่มวันเกิด (อายุ ~2-13 ปี ครอบคลุมทุกรุ่น)
-          const birthYear = 2013 + Math.floor(Math.random() * 11); // 2013-2023
-          const birthMonth = String(1 + Math.floor(Math.random() * 12)).padStart(2, '0');
-          const birthDay = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0');
+          const birthYear = 2013 + Math.floor(rnd() * 11); // 2013-2023
+          const birthMonth = String(1 + Math.floor(rnd() * 12)).padStart(2, '0');
+          const birthDay = String(1 + Math.floor(rnd() * 28)).padStart(2, '0');
           const birthDate = `${birthYear}-${birthMonth}-${birthDay}`;
 
           // จำนวนวันที่ลง (1-2 วัน)
-          const numDays = Math.random() < 0.3 ? 2 : 1;
+          const numDays = rnd() < 0.3 ? 2 : 1;
           const allDays = ['D1', 'D2'];
           const selectedDates = [];
           for (let k = 0; k < numDays; k++) {
@@ -6684,7 +6779,7 @@ function App() {
               const others = eligible.filter(t => t.id !== mainTier.id);
               const pattern = [3, 2, 2, 1, 1, 1, 0, 0]; // 8-step pattern: ~25% 2 รุ่น, ~12% 3 รุ่น
               const addCount = pattern[i % pattern.length];
-              const shuffled = [...others].sort(() => Math.random() - 0.5);
+              const shuffled = [...others].sort(() => rnd() - 0.5);
               for (let k = 0; k < Math.min(addCount, shuffled.length); k++) {
                 picks.push(shuffled[k].id);
               }
@@ -6765,26 +6860,26 @@ function App() {
         }
 
         // วันที่ลงทะเบียน (ย้อนหลัง 1-60 วัน)
-        const daysAgo = Math.floor(Math.random() * 60) + 1;
+        const daysAgo = Math.floor(rnd() * 60) + 1;
         const regDate = new Date(Date.now() - daysAgo * 86400000);
         const dateStr = regDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 
         // สุ่มเบอร์ผู้ปกครอง — ขึ้นต้น 08X หรือ 09X
-        const phonePrefix = Math.random() > 0.5 ? '08' : '09';
-        const phoneRest = String(Math.floor(Math.random() * 100000000)).padStart(8, '0');
+        const phonePrefix = rnd() > 0.5 ? '08' : '09';
+        const phoneRest = String(Math.floor(rnd() * 100000000)).padStart(8, '0');
         const guardianPhone = `${phonePrefix}${phoneRest.slice(0, 1)}-${phoneRest.slice(1, 4)}-${phoneRest.slice(4)}`;
         // ใช้ลูกคนแรกของ reg นี้ตั้งชื่อพ่อ
         const guardianName = `${pick(['คุณ', 'คุณ', 'คุณ'])}${pickIdx(['สมชาย', 'วิชัย', 'ประวิทย์', 'อนุชา', 'พิพัฒน์', 'มณี', 'สุภาพร', 'พรทิพย์', 'จิราพร', 'นันทนา'], i)} ${regRacers[0].thLastName}`;
 
         // สุ่มสถานะชำระเงิน — 75% paid, 25% pending
-        let paymentStatus = Math.random() < 0.75 ? 'paid' : 'pending';
+        let paymentStatus = rnd() < 0.75 ? 'paid' : 'pending';
         // ถ้ามี racer ที่มี paidTiers (จำลองเพิ่มรุ่นทีหลัง) → reg ต้อง pending เพื่อให้เห็น tier-level
         if (regRacers.some(rc => rc.paidTiers)) paymentStatus = 'pending';
         // สุ่มคูปอง — 20% มีคูปอง
         const couponCodes = ['GPRC10', 'GPRCMAIN', 'GPRC10', null, null];
-        const couponCode = Math.random() < 0.2 ? pick(couponCodes.filter(Boolean)) : null;
+        const couponCode = rnd() < 0.2 ? pick(couponCodes.filter(Boolean)) : null;
         // สุ่มขอใบกำกับภาษี — 30%
-        const wantsTaxInvoice = Math.random() < 0.3;
+        const wantsTaxInvoice = rnd() < 0.3;
 
         mock.push({
           id: Date.now() - i * 100000,
@@ -6813,16 +6908,16 @@ function App() {
       mock.forEach(reg => {
         reg.racers.forEach(racer => {
           (racer.selectedDates || []).forEach(dateId => {
-            if (Math.random() < 0.3) {
+            if (rnd() < 0.3) {
               const dateObj = RACE_DATES.find(d => d.id === dateId);
               mockCheckIns.push({
-                id: Date.now() + Math.random(),
+                id: Date.now() + rnd(),
                 refId: reg.refId,
                 racerId: racer.id,
                 racerName: `${racer.thFirstName} ${racer.thLastName}`,
                 eventId: reg.eventId,
                 dateId, // เพิ่มฟิลด์นี้ — บอกว่าเช็คอินวันไหน
-                time: `${String(Math.floor(Math.random() * 5) + 7).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+                time: `${String(Math.floor(rnd() * 5) + 7).padStart(2, '0')}:${String(Math.floor(rnd() * 60)).padStart(2, '0')}:${String(Math.floor(rnd() * 60)).padStart(2, '0')}`,
                 date: dateObj?.short || reg.date,
               });
             }

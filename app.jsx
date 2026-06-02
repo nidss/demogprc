@@ -4994,7 +4994,7 @@ function RegistrationsTable({ registrations, checkIns, eventLabel }) {
   const [filterCoupon, setFilterCoupon] = useState('all'); // 'all' | 'yes' | 'no'
   const [proofModal, setProofModal] = useState({ open: false, documents: [], name: '' });
   const [sortBy, setSortBy] = useState('date-desc');
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
   // flatten registrations → 1 row per racer × day
@@ -6901,6 +6901,42 @@ function App() {
           total: regTotal,
         });
       }
+
+      // ── จัด pattern รุ่นเพิ่มให้ record 1-4 ของ default event (evt2) เพื่อ demo ──
+      // 1: เพิ่ม 1 (จ่าย) | 2: เพิ่ม 2 (จ่าย จ่าย) | 3: เพิ่ม 2 (จ่าย รอ) | 4: เพิ่ม 3 (จ่าย จ่าย รอ)
+      const defaultEventId = 'evt2';
+      // เรียงแบบเดียวกับตาราง (date-desc) แล้วหยิบ evt2
+      const evt2Sorted = [...mock]
+        .filter(r => r.eventId === defaultEventId)
+        .sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));
+
+      // tier pool: รุ่นหลัก (standard) + รุ่นเพิ่มหลายตัว — ใช้ tier ที่ทุกคนเลือกได้ (open group ไม่จำกัดเพศ)
+      const buildPattern = (reg, addPaid, addPending) => {
+        // addPaid = จำนวนรุ่นเพิ่มที่จ่ายแล้ว, addPending = จำนวนรุ่นเพิ่มที่รอจ่าย
+        const racer = reg.racers[0];
+        const did = 'D1';
+        // รุ่นหลัก 1 + รุ่นเพิ่ม (open tiers — เลือกได้ทุกคน)
+        const mainTier = 'A78'; // รุ่นอายุ 7.1-8.0 เป็นหลัก
+        const addPool = ['OJ', 'OS', 'OP']; // open junior/senior/pro — ใช้เป็นรุ่นเพิ่ม
+        const totalAdd = addPaid + addPending;
+        const addTiers = addPool.slice(0, totalAdd);
+        const allTiers = [mainTier, ...addTiers];
+        racer.selectedDates = [did];
+        racer.selectedRaces = { [did]: allTiers };
+        // paidTiers: หลัก + รุ่นเพิ่ม addPaid ตัวแรก = จ่ายแล้ว
+        racer.paidTiers = { [did]: [mainTier, ...addTiers.slice(0, addPaid)] };
+        // ถ้ามีรุ่นรอจ่าย → reg เป็น pending, ไม่งั้น paid
+        reg.paymentStatus = addPending > 0 ? 'pending' : 'paid';
+        // คำนวณ total ใหม่
+        reg.total = allTiers.reduce((s, t) => s + (RACE_TIERS.find(x => x.id === t)?.price || 0), 0);
+        reg.totalItems = allTiers.length;
+      };
+
+      if (evt2Sorted[0]) buildPattern(evt2Sorted[0], 1, 0); // จ่าย
+      if (evt2Sorted[1]) buildPattern(evt2Sorted[1], 2, 0); // จ่าย จ่าย
+      if (evt2Sorted[2]) buildPattern(evt2Sorted[2], 1, 1); // จ่าย รอ
+      if (evt2Sorted[3]) buildPattern(evt2Sorted[3], 2, 1); // จ่าย จ่าย รอ
+
       setRegistrations(mock);
 
       // mock check-ins — สุ่มต่อวันที่ลง (แต่ละวันมี 30% โอกาสเช็คอิน)

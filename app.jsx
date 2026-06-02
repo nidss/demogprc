@@ -6730,10 +6730,10 @@ function App() {
       const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
       const pickIdx = (arr, i) => arr[i % arr.length];
 
-      // generate 20 registrations
+      // generate 120 registrations
       const mock = [];
       const allRacerIds = [];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 120; i++) {
         const isMale = rnd() > 0.45;
         const numRacers = rnd() < 0.3 ? 2 : 1; // 30% มี 2 นักแข่ง
         const eventId = rnd() > 0.4 ? 'evt2' : 'evt1';

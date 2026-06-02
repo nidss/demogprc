@@ -5799,6 +5799,7 @@ function KpiCard({ label, value, unit, subValue, icon: Icon, trend, color, trend
 function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
   const [scanInput, setScanInput] = useState('');
   const [foundRacer, setFoundRacer] = useState(null);
+  const [checkInProof, setCheckInProof] = useState({ open: false, documents: [], name: '' });
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState(checkIns);
@@ -6071,7 +6072,7 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                 </div>
               </div>
               <div className="p-4 sm:p-5">
-                <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">ชื่อนักแข่ง</p>
                     <p className="text-lg font-bold text-slate-900">{foundRacer.racer.thFirstName} {foundRacer.racer.thLastName}</p>
@@ -6080,6 +6081,29 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">ไซส์เสื้อ</p>
                     <p className="text-lg font-bold text-slate-900">{foundRacer.racer.shirtSize || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">หลักฐาน</p>
+                    {(() => {
+                      const realDocs = (foundRacer.racer.documents || []).filter(d => d.dataUrl);
+                      const docsToShow = realDocs.length > 0
+                        ? realDocs
+                        : [{ name: 'บัตรประชาชน (ตัวอย่าง)', type: 'image/png', dataUrl: ID_CARD_DEMO }];
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setCheckInProof({ open: true, documents: docsToShow, name: `${foundRacer.racer.thFirstName} ${foundRacer.racer.thLastName}` })}
+                          className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"
+                          title="ดูหลักฐาน"
+                        >
+                          <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                            <circle cx="9" cy="9" r="2"/>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                          </svg>
+                        </button>
+                      );
+                    })()}
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">เลขอ้างอิง</p>
@@ -6670,6 +6694,60 @@ function AdminCheckInPage({ registrations, checkIns, onCheckIn }) {
           );
         })()}
       </div>
+      )}
+
+      {/* Proof / หลักฐาน Modal — full-screen บน mobile, centered บน desktop */}
+      {checkInProof.open && (
+        <div
+          className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-4 bg-black/60"
+          onClick={() => setCheckInProof({ open: false, documents: [], name: '' })}
+        >
+          <div
+            className="bg-white w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[85vh] sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+              <div className="min-w-0">
+                <p className="text-base font-bold text-slate-900">หลักฐานการยืนยันตัวตน</p>
+                <p className="text-xs text-slate-500 truncate">{checkInProof.name}</p>
+              </div>
+              <button
+                onClick={() => setCheckInProof({ open: false, documents: [], name: '' })}
+                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex-shrink-0"
+                aria-label="ปิด"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
+              {checkInProof.documents.map((doc, i) => {
+                const isImg = doc.dataUrl && (doc.type?.startsWith('image') || /\.(png|jpe?g|gif|webp)$/i.test(doc.name || ''));
+                return (
+                  <div key={i} className="rounded-lg border border-slate-200 overflow-hidden">
+                    {isImg ? (
+                      <img src={doc.dataUrl} alt={doc.name} className="w-full object-contain max-h-[70vh] sm:max-h-[55vh] bg-slate-50" />
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 bg-slate-50">
+                        <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                          <FileIcon className="w-5 h-5 text-slate-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{doc.name || 'เอกสาร'}</p>
+                          <p className="text-[11px] text-slate-400">
+                            {doc.type === 'placeholder' ? 'ยืนยันแล้วจากการลงทะเบียนเดิม' : 'ไม่สามารถแสดงตัวอย่างไฟล์นี้ได้'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {checkInProof.documents.length === 0 && (
+                <p className="text-center text-sm text-slate-400 py-8">ไม่มีหลักฐาน</p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

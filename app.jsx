@@ -4694,12 +4694,6 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
     const map = {};
     filteredRegs.forEach(reg => {
       const regPaid = reg.paymentStatus !== 'pending';
-      // ส่วนลด coupon — หักเฉพาะรุ่นหลัก
-      const coupon = reg.couponCode ? COUPONS[reg.couponCode] : null;
-      // percent10 → ลด 10% จากรุ่นหลัก, main-free → รุ่นหลักฟรี (100%)
-      const mainDiscountRate = coupon
-        ? (coupon.type === 'percent10' ? 0.1 : coupon.type === 'main-free' ? 1 : 0)
-        : 0;
       reg.racers.forEach(racer => {
         const paidTiersAll = racer.paidTiers || null;
         (racer.selectedDates || []).forEach(did => {
@@ -4717,19 +4711,18 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
             const isMain = idx === 0;
             // tier นี้จ่ายแล้วหรือยัง: reg จ่ายครบ OR อยู่ใน paidTiers
             const tierPaid = regPaid || paidTiersForDay.includes(tid);
-            const basePrice = t.price || 0;
-            // ราคาหลังหักส่วนลด — หักเฉพาะรุ่นหลัก
-            const effPrice = isMain ? Math.round(basePrice * (1 - mainDiscountRate)) : basePrice;
+            // ใช้ราคาเต็ม (ไม่หักส่วนลด) เพื่อให้ผลรวมตรงกับ KPI cards (reg.total)
+            const price = t.price || 0;
 
             if (isMain) {
               map[tid].mainCount++;
-              map[tid].mainTotalAmt += effPrice; // ทั้งหมด = เงินที่ควรได้ (หักส่วนลดแล้ว)
-              if (tierPaid) { map[tid].mainPaidAmt += effPrice; map[tid].paidCount++; map[tid].revenue += effPrice; }
+              map[tid].mainTotalAmt += price;
+              if (tierPaid) { map[tid].mainPaidAmt += price; map[tid].paidCount++; map[tid].revenue += price; }
               else { map[tid].pendingCount++; }
             } else {
               map[tid].additionalCount++;
-              map[tid].addTotalAmt += effPrice;
-              if (tierPaid) { map[tid].addPaidAmt += effPrice; map[tid].paidCount++; map[tid].revenue += effPrice; }
+              map[tid].addTotalAmt += price;
+              if (tierPaid) { map[tid].addPaidAmt += price; map[tid].paidCount++; map[tid].revenue += price; }
               else { map[tid].pendingCount++; }
             }
           });
@@ -4842,7 +4835,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               <Trophy className="w-4 h-4 text-red-600" strokeWidth={2} />
               สรุปแยกตามรุ่นแข่ง
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">นักแข่งต่อรุ่น · สถานะชำระเงิน · ยอดรวมหลังหักส่วนลด</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">นักแข่งต่อรุ่น · สถานะชำระเงิน · ยอดรวม</p>
           </div>
           <div className="flex items-center gap-3 text-[11px]">
             <span className="inline-flex items-center gap-1.5 font-bold">

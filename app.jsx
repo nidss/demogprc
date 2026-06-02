@@ -4884,11 +4884,11 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                       </td>
 
                       {/* รุ่นหลัก */}
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap text-[11px] bg-red-50/20">
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap bg-red-50/20">
                         {mainCount > 0 ? (
-                          <span><span className="font-semibold text-green-700">{fmt(mainPaidAmt)}</span><span className="text-slate-400">/{fmt(mainTotalAmt)}</span></span>
+                          <span className="text-sm"><span className="font-semibold text-green-700">{fmt(mainPaidAmt)}</span><span className="text-slate-400 text-[11px]">/{fmt(mainTotalAmt)}</span></span>
                         ) : (
-                          <span className="text-slate-300">—</span>
+                          <span className="text-[11px] text-slate-300">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20 border-r border-slate-100">
@@ -4900,11 +4900,11 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                       </td>
 
                       {/* รุ่นเพิ่ม */}
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap text-[11px] bg-amber-50/20">
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap bg-amber-50/20">
                         {additionalCount > 0 ? (
-                          <span><span className="font-semibold text-green-700">{fmt(addPaidAmt)}</span><span className="text-slate-400">/{fmt(addTotalAmt)}</span></span>
+                          <span className="text-sm"><span className="font-semibold text-green-700">{fmt(addPaidAmt)}</span><span className="text-slate-400 text-[11px]">/{fmt(addTotalAmt)}</span></span>
                         ) : (
-                          <span className="text-slate-300">—</span>
+                          <span className="text-[11px] text-slate-300">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-center whitespace-nowrap bg-amber-50/20 border-r border-slate-100">

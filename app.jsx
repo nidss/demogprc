@@ -4694,8 +4694,13 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
     const map = {};
     filteredRegs.forEach(reg => {
       const regPaid = reg.paymentStatus !== 'pending';
+      // ประเภทคูปองของ reg นี้
+      const coupon = reg.couponCode ? COUPONS[reg.couponCode] : null;
+      const isDiscount10 = coupon && coupon.type === 'percent10';
+      const isDiscount100 = coupon && coupon.type === 'main-free';
       reg.racers.forEach(racer => {
         const paidTiersAll = racer.paidTiers || null;
+        const isAnnual = !!racer.isAnnualMember;
         (racer.selectedDates || []).forEach(did => {
           const tiers = racer.selectedRaces?.[did] || [];
           const paidTiersForDay = paidTiersAll?.[did] || [];
@@ -4706,6 +4711,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               map[tid] = {
                 tier: t, mainCount: 0, additionalCount: 0, paidCount: 0, pendingCount: 0,
                 mainPaidAmt: 0, mainTotalAmt: 0, addPaidAmt: 0, addTotalAmt: 0, revenue: 0,
+                annualCount: 0, discount10Count: 0, discount100Count: 0,
               };
             }
             const isMain = idx === 0;
@@ -4717,6 +4723,10 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
             if (isMain) {
               map[tid].mainCount++;
               map[tid].mainTotalAmt += price;
+              // นับเฉพาะรุ่นหลัก: รายปี / ใช้ส่วนลด
+              if (isAnnual) map[tid].annualCount++;
+              if (isDiscount10) map[tid].discount10Count++;
+              if (isDiscount100) map[tid].discount100Count++;
               if (tierPaid) { map[tid].mainPaidAmt += price; map[tid].paidCount++; map[tid].revenue += price; }
               else { map[tid].pendingCount++; }
             } else {
@@ -4742,6 +4752,9 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
   const totalAdditionalCount = tierStats.reduce((s, t) => s + t.additionalCount, 0);
   const totalRevenue2 = tierStats.reduce((s, t) => s + t.revenue, 0);
   const totalGrand2 = tierStats.reduce((s, t) => s + t.mainTotalAmt + t.addTotalAmt, 0); // ยอดทั้งหมด = ตรง KPI
+  const totalAnnual = tierStats.reduce((s, t) => s + (t.annualCount || 0), 0);
+  const totalDiscount10 = tierStats.reduce((s, t) => s + (t.discount10Count || 0), 0);
+  const totalDiscount100 = tierStats.reduce((s, t) => s + (t.discount100Count || 0), 0);
 
   // Event stats สำหรับ sidebar (เสมอใช้ all data)
   const eventStats = EVENTS.map(evt => {
@@ -4855,16 +4868,20 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
           <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีข้อมูลการลงทะเบียน</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={{ minWidth: '1100px' }}>
+            <table className="w-full text-sm" style={{ minWidth: '1500px' }}>
               <thead className="bg-slate-50 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
                 <tr>
                   <th rowSpan={2} className="px-3 py-2 text-left whitespace-nowrap border-r border-slate-200 align-middle">รุ่นการแข่งขัน</th>
-                  <th colSpan={2} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200 bg-red-50/60 text-red-800">รุ่นหลัก</th>
+                  <th colSpan={6} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200 bg-red-50/60 text-red-800">รุ่นหลัก</th>
                   <th colSpan={2} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200 bg-amber-50/60 text-amber-800">รุ่นเพิ่ม</th>
                   <th colSpan={2} className="px-3 py-2 text-center whitespace-nowrap border-r border-slate-200">สถานะชำระ</th>
                   <th rowSpan={2} className="px-3 py-2 text-right whitespace-nowrap align-middle">ยอดรวม (บาท)</th>
                 </tr>
                 <tr>
+                  <th className="px-3 py-1.5 text-right whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30">ราคาบัตร</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30">รายปี</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30">ลด 10%</th>
+                  <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30">ลด 100%</th>
                   <th className="px-3 py-1.5 text-right whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30">ชำระแล้ว/ทั้งหมด</th>
                   <th className="px-3 py-1.5 text-center whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-red-50/30 border-r border-slate-200">ผู้สมัคร/ทั้งหมด</th>
                   <th className="px-3 py-1.5 text-right whitespace-nowrap text-[9px] font-medium text-slate-500 normal-case bg-amber-50/30">ชำระแล้ว/ทั้งหมด</th>
@@ -4874,7 +4891,7 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tierStats.map(({ tier, mainCount, additionalCount, paidCount, pendingCount, revenue, mainPaidAmt, mainTotalAmt, addPaidAmt, addTotalAmt }) => {
+                {tierStats.map(({ tier, mainCount, additionalCount, paidCount, pendingCount, revenue, mainPaidAmt, mainTotalAmt, addPaidAmt, addTotalAmt, annualCount, discount10Count, discount100Count }) => {
                   const tierGrandTotal = mainTotalAmt + addTotalAmt; // ยอดทั้งหมด (paid+pending) = ตรงกับ KPI
                   return (
                     <tr key={tier.id} className="hover:bg-slate-50 transition">
@@ -4886,6 +4903,30 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                       </td>
 
                       {/* รุ่นหลัก */}
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap bg-red-50/20">
+                        <span className="text-[11px] text-slate-600">{fmt(tier.price || 0)}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20">
+                        {mainCount > 0 && annualCount > 0 ? (
+                          <span className="text-sm font-semibold text-slate-900">{annualCount}</span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20">
+                        {mainCount > 0 && discount10Count > 0 ? (
+                          <span className="text-sm font-semibold text-slate-900">{discount10Count}</span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20">
+                        {mainCount > 0 && discount100Count > 0 ? (
+                          <span className="text-sm font-semibold text-slate-900">{discount100Count}</span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap bg-red-50/20">
                         {mainCount > 0 ? (
                           <span className="text-sm"><span className="font-semibold text-green-700">{fmt(mainPaidAmt)}</span><span className="text-slate-400 text-[11px]">/{fmt(mainTotalAmt)}</span></span>
@@ -4951,7 +4992,11 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
               <tfoot className="bg-slate-50 border-t-2 border-slate-200">
                 <tr>
                   <td className="px-3 py-2.5 text-[11px] font-semibold text-slate-700 uppercase border-r border-slate-200">รวมทั้งหมด</td>
-                  <td className="px-3 py-2.5 bg-red-50/40 border-r border-slate-100"></td>
+                  <td className="px-3 py-2.5 bg-red-50/40"></td>
+                  <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-red-50/40">{totalAnnual || '—'}</td>
+                  <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-red-50/40">{totalDiscount10 || '—'}</td>
+                  <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-red-50/40">{totalDiscount100 || '—'}</td>
+                  <td className="px-3 py-2.5 bg-red-50/40"></td>
                   <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-red-50/40 border-r border-slate-200">{totalMainCount}</td>
                   <td className="px-3 py-2.5 bg-amber-50/40 border-r border-slate-100"></td>
                   <td className="px-3 py-2.5 text-center font-medium text-slate-900 bg-amber-50/40 border-r border-slate-200">{totalAdditionalCount}</td>
@@ -6959,6 +7004,7 @@ function App() {
             teamName: pick(teams),
             selectedDates,
             selectedRaces,
+            isAnnualMember: rnd() < 0.15, // ~15% เป็นสมาชิกรายปี
             ...(paidTiers ? { paidTiers } : {}),
           });
           regTotal += racerPrice;

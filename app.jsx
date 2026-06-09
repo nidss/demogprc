@@ -4908,21 +4908,21 @@ function AdminDashboard({ registrations, checkIns, onNavigate }) {
                       </td>
                       <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20">
                         {mainCount > 0 && annualCount > 0 ? (
-                          <span className="text-sm font-semibold text-slate-900">{annualCount}</span>
+                          <span className="text-[11px] text-slate-600">{annualCount}</span>
                         ) : (
                           <span className="text-[11px] text-slate-300">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20">
                         {mainCount > 0 && discount10Count > 0 ? (
-                          <span className="text-sm font-semibold text-slate-900">{discount10Count}</span>
+                          <span className="text-[11px] text-slate-600">{discount10Count}</span>
                         ) : (
                           <span className="text-[11px] text-slate-300">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-center whitespace-nowrap bg-red-50/20">
                         {mainCount > 0 && discount100Count > 0 ? (
-                          <span className="text-sm font-semibold text-slate-900">{discount100Count}</span>
+                          <span className="text-[11px] text-slate-600">{discount100Count}</span>
                         ) : (
                           <span className="text-[11px] text-slate-300">—</span>
                         )}
